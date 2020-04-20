@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block title %}
+CN2-SD
+{% endblock %}
+
+{% block content %}
+    <div class="content-section">
+        <form method="POST" action="" enctype="multipart/form-data">
+            {{ form.hidden_tag() }}
+            <fieldset class="form-group">
+                <legend class="border-bottom mb-4"> Parameters for the algorithm </legend>
+                <div class="custom-file mb-2">
+                    {% if form.input_file.errors %}
+                        {{ form.input_file(class="custom-file-input is-invalid") }}
+                        <div class="invalid-feedback">
+                            {% for error in form.input_file.errors %}
+                                <span>{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        {{ form.input_file(class="custom-file-input") }}
+                    {% endif %}
+                    {{ form.input_file.label(class="custom-file-label") }}
+                </div>
+                <div class="form-group">
+                    {{ form.output_column.label(class="form-control-label") }}
+                    {% if form.output_column.errors %}
+                        {{ form.output_column(class="form-control is-invalid") }}
+                        <div class="invalid-feedback">
+                            {% for error in form.output_column.errors %}
+                                <span>{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        {{ form.output_column(class="form-control") }}
+                    {% endif %}
+                </div>
+                <div class="form-group">
+                    {{ form.positive_class.label(class="form-control-label") }}
+                    {% if form.positive_class.errors %}
+                        {{ form.positive_class(class="form-control is-invalid") }}
+                        <div class="invalid-feedback">
+                            {% for error in form.positive_class.errors %}
+                                <span>{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        {{ form.positive_class(class="form-control") }}
+                    {% endif %}
+                </div>
+                <div class="form-group">
+                    {{ form.max_expressions.label(class="form-control-label") }}
+                    {% if form.max_expressions.errors %}
+                        {{ form.max_expressions(class="form-control is-invalid") }}
+                        <div class="invalid-feedback">
+                            {% for error in form.max_expressions.errors %}
+                                <span>{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        {{ form.max_expressions(class="form-control") }}
+                    {% endif %}
+                </div>
+                <div class="form-group">
+                    {{ form.min_wracc.label(class="form-control-label") }}
+                    {% if form.min_wracc.errors %}
+                        {{ form.min_wracc(class="form-control is-invalid") }}
+                        <div class="invalid-feedback">
+                            {% for error in form.min_wracc.errors %}
+                                <span>{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        {{ form.min_wracc(class="form-control") }}
+                    {% endif %}
+                </div>
+                <div class="form-group">
+                    {{ form.weight_method.label(class="form-control-label") }}
+                    {% if form.weight_method.errors %}
+                        {{ form.weight_method(class="form-control is-invalid") }}
+                        <div class="invalid-feedback">
+                            {% for error in form.weight_method.errors %}
+                                <span>{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        {{ form.weight_method(class="form-control") }}
+                    {% endif %}
+                </div>
+                <div class="form-group">
+                    {{ form.gamma.label(class="form-control-label") }}
+                    {% if form.gamma.errors %}
+                        {{ form.gamma(class="form-control is-invalid") }}
+                        <div class="invalid-feedback">
+                            {% for error in form.gamma.errors %}
+                                <span>{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        {{ form.gamma(class="form-control") }}
+                    {% endif %}
+                </div>
+            </fieldset>
+            <div class="form-group">
+                {{ form.submit(class="btn btn-outline-info") }}
+            </div>
+        </form>
+    </div>
+{% endblock %}
