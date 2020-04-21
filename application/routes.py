@@ -5,6 +5,7 @@ from .forms import CN2SDForm
 from .algorithms.CN2_SD import CN2_SD, initialize_CN2_SD
 import pandas as pd
 import pandas as pd
+from .algorithms.errors import UserInputError
 
 main_bp = Blueprint('main_bp', __name__,
                     template_folder='templates',
@@ -31,36 +32,59 @@ def allowed_file(filename):
 
 @main_bp.route('/cn2', methods=['GET', 'POST'])
 def cn2():
-
-    # CN2 = CN2_SD(entrada, "Survived", "Yes", max_exp=2, min_wracc=0.05, weight_method=1, gamma=0.5)
-    # session['CN2'] = CN2
-    # CN2.min_wracc = 1
-    # session['CN2'] = CN2
     form = CN2SDForm()
     if form.validate_on_submit():
         # Read input data file
-        current_app.logger.info(request.files)
-        # check if the post request has the file part
+        # Check if the post request has the file part
         if 'input_file' not in request.files:
             flash('No file part', 'danger')
             return redirect(request.url)
         file = request.files['input_file']
-        # if user does not select file, browser also
+        # If user does not select file, browser also
         # submit an empty part without filename
         if file.filename == '':
             flash('No selected file', 'danger')
             return redirect(request.url)
+        # Check for extension
         if not allowed_file(file.filename):
             flash('File must be a csv', 'danger')
             return redirect(request.url)
         if file:
+            # Read csv file from request
             input_data = pd.read_csv(file)
-
-        # set session CN2 object
+        # Check validity of parameters
+        try:
+            if form.gamma.data:
+                CN2 = initialize_CN2_SD(input_data=input_data,
+                                        col_output=form.output_column.data,
+                                        positive_class=form.positive_class.data,
+                                        max_exp=form.max_expressions.data,
+                                        min_wracc=form.min_wracc.data,
+                                        weight_method=form.weight_method.data,
+                                        gamma=float(form.gamma.data))
+            else:
+                CN2 = initialize_CN2_SD(input_data=input_data,
+                                        col_output=form.output_column.data,
+                                        positive_class=form.positive_class.data,
+                                        max_exp=form.max_expressions.data,
+                                        min_wracc=form.min_wracc.data,
+                                        weight_method=form.weight_method.data)
+        except UserInputError as error:
+            flash(error.message, 'danger')
+            return redirect(request.url)
+        except KeyError as error:
+            flash(f' Key error: {str(error)}', 'danger')
+            return redirect(request.url)
+        # Set session CN2 object
+        session['CN2'] = CN2
         return redirect(url_for('main_bp.cn2_exec'))
     return render_template('cn2_main.html', form=form)
 
 
 @main_bp.route('/cn2/exec', methods=['GET', 'POST'])
 def cn2_exec():
-    return render_template('cn2_exec.html')
+    CN2 = session['CN2']
+    end = False
+    if request.method == 'POST':
+        end, _ = CN2.do_step()
+    return render_template('cn2_exec.html', rule_list=CN2.rule_list, end=end)

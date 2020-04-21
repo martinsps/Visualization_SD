@@ -5,5 +5,25 @@ CN2-SD
 {% endblock %}
 
 {% block content %}
-    Ejecutando CN2-SD
+    Executing CN2-SD <br>
+
+    {% for rule in rule_list %}
+        {{ rule }} <br>
+    {% endfor %}
+
+    {% if end %}
+
+        <h3> It is finished! </h3>
+
+    {% else %}
+
+        <div class="content-section">
+            <form method="POST" action="" enctype="multipart/form-data">
+                <div class="form-group">
+                    <input class="btn btn-outline-info" id="submit" name="submit" type="submit" value="Do step!">
+                </div>
+            </form>
+        </div>
+
+    {% endif %}
 {% endblock %}
