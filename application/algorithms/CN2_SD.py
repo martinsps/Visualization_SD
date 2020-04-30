@@ -1,7 +1,8 @@
 import numpy as np
 
-from .input import check_input_data_CN2, check_parameters_CN2
+from .input import check_input_data, check_parameters_CN2
 from .utils import data_frame_difference
+import math
 
 
 def initialize_CN2_SD(input_data, col_output, positive_class, max_exp, min_wracc, weight_method, gamma=0.5):
@@ -21,7 +22,7 @@ def initialize_CN2_SD(input_data, col_output, positive_class, max_exp, min_wracc
     :param gamma: Parameter (> 0 and < 1) that controls the flow of the multiplicative method
     :return:
     """
-    check_input_data_CN2(input_data, col_output, positive_class)
+    check_input_data(input_data, col_output, positive_class)
     check_parameters_CN2(max_exp, min_wracc, weight_method, gamma)
     return CN2_SD(input_data, col_output, positive_class, max_exp, min_wracc, weight_method, gamma)
 
@@ -107,6 +108,9 @@ class CN2_SD:
         if best_rule and best_rule.wracc >= self.min_wracc:
             # Update weights
             self.apply_rule(best_rule)
+            best_rule.coverage = self.get_coverage(best_rule)
+            best_rule.support = self.get_support(best_rule)
+            best_rule.significance = self.get_significance(best_rule)
             self.rule_list.append(best_rule)
         if self.stop_condition(best_rule):
             end = True
@@ -313,6 +317,39 @@ class CN2_SD:
             return 0
         return (n_cond / N) * ((n_class_cond / n_cond) - (n_class / N))
 
+    def get_coverage(self, rule):
+        data_rule = self.current_data
+        for antecedent in rule.antecedents:
+            data_rule = data_rule[data_rule[antecedent.variable] == antecedent.value]
+        return len(data_rule.index) / self.N
+
+    def get_support(self, rule):
+        data_rule = self.current_data
+        for antecedent in rule.antecedents:
+            data_rule = data_rule[data_rule[antecedent.variable] == antecedent.value]
+        # Only the ones of the positive class
+        data_rule_positive = data_rule[data_rule[self.col_output] == self.positive_class]
+        return len(data_rule_positive.index) / self.N
+
+    def get_significance(self, rule):
+        # p(Cond_i)
+        cov = self.get_coverage(rule)
+        significance = 0
+        data_rule = self.current_data
+        for antecedent in rule.antecedents:
+            data_rule = data_rule[data_rule[antecedent.variable] == antecedent.value]
+        levels = self.current_data[self.col_output].unique()
+        for level in levels:
+            # n(Class_j,Cond_i)
+            data_rule_level = data_rule[data_rule[self.col_output] == level]
+            n_rule_level = len(data_rule_level.index)
+            # n(Class_j)
+            data_level = self.current_data[self.current_data[self.col_output] == level]
+            n_data_level = len(data_level.index)
+            significance += n_rule_level * math.log(n_rule_level / (n_data_level * cov))
+        significance *= 2
+        return significance
+
 
 class Rule:
 
@@ -366,7 +403,7 @@ class Rule:
         self.antecedents.append(antecedent)
 
     def __str__(self):
-        msg = "Rule: "
+        msg = ""
         for ant in self.antecedents:
             msg += f"{str(ant.variable)} = {str(ant.value)} AND "
         return msg[:-4]
