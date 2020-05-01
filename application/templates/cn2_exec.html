@@ -1,29 +1,67 @@
-{% extends "base.html" %}
+{% extends "base_graphics.html" %}
 
 {% block title %}
 CN2-SD
 {% endblock %}
 
 {% block content %}
-    Executing CN2-SD <br>
-
-    {% for rule in rule_list %}
-        {{ rule }} <br>
-    {% endfor %}
-
-    {% if end %}
-
-        <h3> It is finished! </h3>
-
-    {% else %}
-
-        <div class="content-section">
-            <form method="POST" action="" enctype="multipart/form-data">
-                <div class="form-group">
-                    <input class="btn btn-outline-info" id="submit" name="submit" type="submit" value="Do step!">
-                </div>
-            </form>
+    <div class="row">
+        <div class="col">
+            <h1>Executing CN2-SD </h1>
+            {% if end %}
+                <h3> It is finished! </h3>
+            {% endif %}
         </div>
+    </div>
+    <div class="row">
+        <div class="col-12" id="chartArea">
+            <svg ></svg>
+        </div>
+        <div class="col-12">
+            <h2>Rules found:</h2>
+            <table class="table table-hover table-responsive">
+                <thead>
+                    <tr>
+                        <th scope="col">#</th>
+                        <th scope="col">Rule</th>
+                        <th scope="col">WRAcc</th>
+                        <th scope="col">Coverage</th>
+                        <th scope="col">Support</th>
+                        <th scope="col">Significance</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for rule in rule_list %}
+                        <tr>
+                            <th scope="row">{{ loop.index }}</th>
+                            <td>{{ rule }}</td>
+                            <td>{{ "%.4f"|format(rule.wracc) }}</td>
+                            <td>{{ "%.4f"|format(rule.coverage) }}</td>
+                            <td>{{ "%.4f"|format(rule.support) }}</td>
+                            <td>{{ "%.4f"|format(rule.significance) }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
 
-    {% endif %}
+            {% if not end %}
+                 <div class="content-section">
+                     <form method="POST" action="" enctype="multipart/form-data">
+                        <div class="form-group">
+                            <input class="btn btn-outline-info" id="submit" name="submit" type="submit" value="Do step!">
+                        </div>
+                    </form>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='js/graphics.js') }}"></script>
+    <script>
+        const graphData = {{ data.chart_data | safe }};
+        const cols = {{ cols | safe }};
+        const col_output = '{{ col_output | safe }}';
+        const resize = () => redraw_CN2(graphData,cols,col_output);
+        resize();
+        window.onresize = resize;
+    </script>
 {% endblock %}
