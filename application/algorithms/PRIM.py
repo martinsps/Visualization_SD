@@ -25,6 +25,8 @@ def initialize_PRIM(input_data, col_output, positive_class, alpha, threshold_box
     """
     check_input_data(input_data, col_output, positive_class)
     check_parameters_PRIM(input_data, alpha, threshold_box, threshold_global, min_mean, ordinal_columns)
+    # To convert positive_class to number if necessary (always comes as a string)
+    positive_class = type(input_data[col_output][0])(positive_class)
     return PRIM(input_data, col_output, positive_class, alpha, threshold_box, threshold_global, min_mean,
                 ordinal_columns)
 
@@ -71,6 +73,7 @@ class PRIM:
         and the ordered list of values of those columns as "values"
         """
         # Initialize attributes
+        self.input_data = input_data
         self.current_data = input_data
         # Size of input data
         self.N = len(input_data.index)
@@ -103,11 +106,7 @@ class PRIM:
                 if end_box:
                     box, box_data = self.bottom_up_pasting(box, box_data)
                     box, box_data, variables_eliminated = self.redundant_input_variables(box, box_data)
-                    box.mean = self.calculate_mean(box_data)
-                    # Only added if it has a minimum box mean
-                    if box.mean >= self.min_mean:
-                        self.boxes.append(box)
-                        self.current_data = self.remove_box(box_data, self.current_data)
+                    self.update_variables(box, box_data)
             if self.stop_condition_PRIM(box_data):
                 end_prim = True
         for i, box in enumerate(self.boxes):
@@ -134,7 +133,22 @@ class PRIM:
         # Eliminate instances of new boundary found
         box_data = self.apply_boundary(best_boundary, box_data)
         box.add_boundary(best_boundary)
+        box.mean = self.calculate_mean(box_data)
         return box, box_data, self.stop_condition_box(box_data)
+
+    def update_variables(self, box, box_data):
+        """
+        Updates current data and box list if box found was
+        suitable (refactored from original code to make it
+        so that it can be done easily from flask)
+        :param box:
+        :param box_data:
+        :return:
+        """
+        # Only added if it has a minimum box mean
+        if box.mean >= self.min_mean:
+            self.boxes.append(box)
+            self.current_data = self.remove_box(box_data, self.current_data)
 
     def generate_boundaries(self, data):
         """
@@ -306,6 +320,7 @@ class PRIM:
             if mean_gain > 0:
                 box.add_boundary(boundary)
                 data_enlarged = self.apply_pasting(box, data_enlarged, self.current_data)
+                box.mean = self.calculate_mean(data_enlarged)
             else:
                 end_pasting = True
         return box, data_enlarged
@@ -468,12 +483,13 @@ class PRIM:
                     # Eliminate the variable applying pasting with box
                     box_data = self.apply_pasting(box_best_mean_gain, box_data, self.current_data)
                     box = box_best_mean_gain
+                    box.mean = self.calculate_mean(box_data)
                     variables_eliminated.append(variable_best_mean_gain)
                 else:
                     end = True
         return box, box_data, variables_eliminated
 
-    def stop_condition_PRIM(self,box_data):
+    def stop_condition_PRIM(self, box_data):
         """
         Determines if PRIM has ended, that is, every subgroup has been
         found given initial parameters and conditions.
@@ -495,6 +511,30 @@ class PRIM:
         # Determine if box_data support is below the threshold_box
         support = len(box_data.index) / self.N
         return support <= self.threshold_box
+
+    def get_coverage(self, box_data):
+        return len(box_data.index) / self.N
+
+    def get_support(self, box_data):
+        # Only the ones of the positive class
+        box_data_positive = box_data[box_data[self.col_output] == self.positive_class]
+        return len(box_data_positive.index) / self.N
+
+    def get_significance(self, box_data):
+        # p(Cond_i)
+        cov = self.get_coverage(box_data)
+        significance = 0
+        levels = self.input_data[self.col_output].unique()
+        for level in levels:
+            # n(Class_j,Cond_i)
+            box_data_level = box_data[box_data[self.col_output] == level]
+            n_rule_level = len(box_data_level.index)
+            # n(Class_j)
+            data_level = self.input_data[self.input_data[self.col_output] == level]
+            n_data_level = len(data_level.index)
+            significance += n_rule_level * math.log(n_rule_level / (n_data_level * cov))
+        significance *= 2
+        return significance
 
 
 class Box:
