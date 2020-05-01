@@ -27,7 +27,7 @@ def initialize_PRIM(input_data, col_output, positive_class, alpha, threshold_box
     check_parameters_PRIM(input_data, alpha, threshold_box, threshold_global, min_mean, ordinal_columns)
     # To convert positive_class to number if necessary (always comes as a string)
     positive_class = type(input_data[col_output][0])(positive_class)
-    return PRIM(input_data, col_output, positive_class, alpha, threshold_box, threshold_global, min_mean,
+    return PRIM(input_data, col_output, positive_class, float(alpha), threshold_box, threshold_global, min_mean,
                 ordinal_columns)
 
 
@@ -147,6 +147,9 @@ class PRIM:
         """
         # Only added if it has a minimum box mean
         if box.mean >= self.min_mean:
+            box.coverage = self.get_coverage(box_data)
+            box.support = self.get_support(box_data)
+            box.significance = self.get_significance(box_data)
             self.boxes.append(box)
             self.current_data = self.remove_box(box_data, self.current_data)
 
@@ -309,7 +312,6 @@ class PRIM:
         continues until no mean gain is obtained.
         :param box: Current box (before pasting)
         :param box_data: Current box data (before pasting)
-        :param data: Current data (also outside the box)
         :return: Box and box data after pasting (may or may not be bigger)
         """
         # Number of observations for pasting with real variables
@@ -543,10 +545,10 @@ class Box:
         self.mean = 0
 
     def __str__(self):
-        msg = "Box: "
-        for boundary in self.boundary_list:
-            msg += boundary.__str__() + " "
-        return msg
+        msg = ""
+        for ant in self.boundary_list:
+            msg += f"{ant} AND "
+        return msg[:-4]
 
     @staticmethod
     def box_copy(box):
@@ -597,4 +599,4 @@ class Boundary:
         self.operator = operator
 
     def __str__(self):
-        return "Boundary: %s %s %s" % (self.variable_name, self.operator, str(self.value))
+        return "%s %s %s" % (self.variable_name, self.operator, str(self.value))
