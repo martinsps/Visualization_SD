@@ -24,6 +24,8 @@ def initialize_CN2_SD(input_data, col_output, positive_class, max_exp, min_wracc
     """
     check_input_data(input_data, col_output, positive_class)
     check_parameters_CN2(max_exp, min_wracc, weight_method, gamma)
+    # To convert positive_class to number if necessary (always comes as a string)
+    positive_class = type(input_data[col_output][0])(positive_class)
     return CN2_SD(input_data, col_output, positive_class, max_exp, min_wracc, weight_method, gamma)
 
 
