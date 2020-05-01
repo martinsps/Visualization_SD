@@ -1,0 +1,94 @@
+{% extends "base_graphics.html" %}
+
+{% block title %}
+PRIM
+{% endblock %}
+
+{% block content %}
+    <div class="row">
+        <div class="col">
+            <h1>Executing PRIM </h1>
+            {% if end_prim %}
+                <h3> It is finished! </h3>
+            {% endif %}
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-12" id="chartArea">
+            <svg ></svg>
+        </div>
+        {% if not end_prim %}
+            {% if current_box.boundary_list|length > 0 %}
+                <div class="col-12">
+                    <p><strong>Current box:</strong>  {{ current_box }}, mean = {{ current_box.mean }} </p>
+                </div>
+            {% endif %}
+        {% endif %}
+        <div class="col-12">
+            <h2>Boxes found:</h2>
+            <table class="table table-hover table-responsive">
+                <thead>
+                    <tr>
+                        <th scope="col">#</th>
+                        <th scope="col">Box</th>
+                        <th scope="col">Mean</th>
+                        <th scope="col">Coverage</th>
+                        <th scope="col">Support</th>
+                        <th scope="col">Significance</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for box in box_list %}
+                        <tr>
+                            <th scope="row">{{ loop.index }}</th>
+                            <td>{{ box }}</td>
+                            <td>{{ "%.4f"|format(box.mean) }}</td>
+                            <td>{{ "%.4f"|format(box.coverage) }}</td>
+                            <td>{{ "%.4f"|format(box.support) }}</td>
+                            <td>{{ "%.4f"|format(box.significance) }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% if not end_prim %}
+                {% if not end_box %}
+                     <div class="content-section">
+                         <form method="POST" action="" enctype="multipart/form-data">
+                            <div class="form-group">
+                                <input class="btn btn-outline-info" id="submit" name="submit" type="submit" value="Do step!">
+                            </div>
+                        </form>
+                    </div>
+                <!-- Case of end of algorithm, pasting or redundant -->
+                {% else %}
+                    {% if pasting %}
+                        <div class="content-section">
+                             <form method="POST" action="{{ url_for('main_bp.prim_pasting') }}" enctype="multipart/form-data">
+                                <div class="form-group">
+                                    <input class="btn btn-outline-info" id="submit" name="submit" type="submit" value="Do pasting!">
+                                </div>
+                            </form>
+                        </div>
+                    {% elif redundant %}
+                        <div class="content-section">
+                             <form method="POST" action="{{ url_for('main_bp.prim_redundant') }}" enctype="multipart/form-data">
+                                <div class="form-group">
+                                    <input class="btn btn-outline-info" id="submit" name="submit" type="submit" value="Eliminate redundant input variables!">
+                                </div>
+                            </form>
+                        </div>
+                    {% endif %}
+                {% endif %}
+            {% endif %}
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='js/graphics.js') }}"></script>
+    <script>
+        const graphData = {{ data.chart_data | safe }};
+        const cols = {{ cols | safe }};
+        const col_output = '{{ col_output | safe }}';
+        const resize = () => redraw_PRIM(graphData,cols,col_output);
+        resize();
+        window.onresize = resize;
+    </script>
+{% endblock %}

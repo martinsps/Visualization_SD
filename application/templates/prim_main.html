@@ -5,5 +5,123 @@ PRIM
 {% endblock %}
 
 {% block content %}
-    Página principal del algoritmo PRIM
+    <div class="row">
+        <div class="col col-lg-8">
+            <div class="content-section">
+                <form method="POST" action="" enctype="multipart/form-data">
+                    {{ form.hidden_tag() }}
+                    <fieldset class="form-group">
+                        <legend class="border-bottom mb-4"> Parameters for the algorithm </legend>
+                        <div class="custom-file mb-2">
+                            {% if form.input_file.errors %}
+                                {{ form.input_file(class="custom-file-input is-invalid") }}
+                                <div class="invalid-feedback">
+                                    {% for error in form.input_file.errors %}
+                                        <span>{{ error }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                {{ form.input_file(class="custom-file-input") }}
+                            {% endif %}
+                            {{ form.input_file.label(class="custom-file-label") }}
+                        </div>
+                        <div class="form-group">
+                            {{ form.output_column.label(class="form-control-label") }}
+                            {% if form.output_column.errors %}
+                                {{ form.output_column(class="form-control is-invalid") }}
+                                <div class="invalid-feedback">
+                                    {% for error in form.output_column.errors %}
+                                        <span>{{ error }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                {{ form.output_column(class="form-control") }}
+                            {% endif %}
+                        </div>
+                        <div class="form-group">
+                            {{ form.positive_class.label(class="form-control-label") }}
+                            {% if form.positive_class.errors %}
+                                {{ form.positive_class(class="form-control is-invalid") }}
+                                <div class="invalid-feedback">
+                                    {% for error in form.positive_class.errors %}
+                                        <span>{{ error }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                {{ form.positive_class(class="form-control") }}
+                            {% endif %}
+                        </div>
+                        <div class="form-group">
+                            {{ form.alpha.label(class="form-control-label") }}
+                            {% if form.alpha.errors %}
+                                {{ form.alpha(class="form-control is-invalid") }}
+                                <div class="invalid-feedback">
+                                    {% for error in form.alpha.errors %}
+                                        <span>{{ error }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                {{ form.alpha(class="form-control") }}
+                            {% endif %}
+                        </div>
+                        <div class="form-group">
+                            {{ form.threshold_box.label(class="form-control-label") }}
+                            {% if form.threshold_box.errors %}
+                                {{ form.threshold_box(class="form-control is-invalid") }}
+                                <div class="invalid-feedback">
+                                    {% for error in form.threshold_box.errors %}
+                                        <span>{{ error }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                {{ form.threshold_box(class="form-control") }}
+                            {% endif %}
+                        </div>
+                        <div class="form-group">
+                            {{ form.threshold_global.label(class="form-control-label") }}
+                            {% if form.threshold_global.errors %}
+                                {{ form.threshold_global(class="form-control is-invalid") }}
+                                <div class="invalid-feedback">
+                                    {% for error in form.threshold_global.errors %}
+                                        <span>{{ error }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                {{ form.threshold_global(class="form-control") }}
+                            {% endif %}
+                        </div>
+                        <div class="form-group">
+                            {{ form.min_mean.label(class="form-control-label") }}
+                            {% if form.min_mean.errors %}
+                                {{ form.min_mean(class="form-control is-invalid") }}
+                                <div class="invalid-feedback">
+                                    {% for error in form.min_mean.errors %}
+                                        <span>{{ error }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                {{ form.min_mean(class="form-control") }}
+                            {% endif %}
+                        </div>
+                        <div class="form-group">
+                            {{ form.ordinal_columns.label(class="form-control-label") }}
+                            {% if form.ordinal_columns.errors %}
+                                {{ form.ordinal_columns(class="form-control is-invalid") }}
+                                <div class="invalid-feedback">
+                                    {% for error in form.ordinal_columns.errors %}
+                                        <span>{{ error }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                {{ form.ordinal_columns(class="form-control") }}
+                            {% endif %}
+                        </div>
+                    </fieldset>
+                    <div class="form-group">
+                        {{ form.submit(class="btn btn-outline-info") }}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 {% endblock %}
