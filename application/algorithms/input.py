@@ -6,9 +6,10 @@ def check_input_data(input_data, col_output, positive_class):
     # If column does not exist, "KeyError" is thrown
     column = input_data[col_output]
     column = column.astype("category")
-    levels = column.unique()
+    # Input positive_class comes always as a string
+    levels = list(map(str, column.unique()))
     if positive_class not in levels:
-        raise UserInputError("Positive class is not on the output column levels.")
+        raise UserInputError(f"Positive class ({positive_class}) is not on the output column ({col_output}) levels.")
 
 
 def check_parameters_PRIM(input_data, alpha, threshold_box, threshold_global, min_mean, ordinal_columns):
