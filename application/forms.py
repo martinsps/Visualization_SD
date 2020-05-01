@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, SubmitField, DecimalField, FileField, IntegerField, SelectField
+from wtforms import StringField, SubmitField, DecimalField, FileField, IntegerField, SelectField, FieldList
 from wtforms.validators import DataRequired, NumberRange, Optional
 
 
@@ -19,4 +19,28 @@ class CN2SDForm(FlaskForm):
     gamma = DecimalField('Gamma parameter for multiplicative weight method (default 0.5)',
                          validators=[Optional(), NumberRange(min=0.000001, max=0.999999,
                                                              message="Must be a decimal > 0 and < 1.")])
+    submit = SubmitField('Start!')
+
+
+class PRIMForm(FlaskForm):
+    input_file = FileField('Input data (.csv file)', validators=[DataRequired()])
+    output_column = StringField('Output column name', validators=[DataRequired()])
+    positive_class = StringField('Positive class value', validators=[DataRequired()])
+    alpha = DecimalField('Alpha',
+                         validators=[DataRequired(message="Must be a decimal between 0 and 1."),
+                                     NumberRange(min=0.000001, max=0.999999,
+                                                 message="Must be a decimal > 0 and < 1.")])
+    threshold_box = DecimalField('Box support threshold',
+                                 validators=[DataRequired(message="Must be a decimal between 0 and 1."),
+                                             NumberRange(min=0.000001, max=0.999999,
+                                                         message="Must be a decimal > 0 and < 1.")])
+    threshold_global = DecimalField('Global support threshold',
+                                    validators=[DataRequired(message="Must be a decimal between 0 and 1."),
+                                                NumberRange(min=0.000001, max=0.999999,
+                                                            message="Must be a decimal > 0 and < 1.")])
+    min_mean = DecimalField('Minimum mean (default is global mean)',
+                            validators=[Optional(),
+                                        NumberRange(min=0.000001, max=0.999999,
+                                                    message="Must be a decimal > 0 and < 1.")])
+    ordinal_columns = FieldList(StringField('Ordinal columns', validators=[]))
     submit = SubmitField('Start!')
