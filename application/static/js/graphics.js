@@ -44,7 +44,6 @@ const redraw = (graphData, cols, col_output, algorithm) => {
 
       var xScale;
       if(typeof data[0][colX] == "number"){
-        console.log("SI")
         xScale = d3.scaleLinear()
             .domain(d3.extent(data, xValue))
             .range([0, innerWidth])
@@ -73,8 +72,6 @@ const redraw = (graphData, cols, col_output, algorithm) => {
          d.jitterX = random_jitterX(d);
          d.jitterY = random_jitterY(d);
       })
-
-      console.log(data[0]);
 
       const colorScale = d3.scaleOrdinal()
         .range(d3.schemeCategory10);
@@ -136,6 +133,11 @@ const redraw = (graphData, cols, col_output, algorithm) => {
         .scale(colorScale)
         .shape('circle');
 
+      // Define the div for the tooltip (https://bl.ocks.org/d3noob/a22c42db65eb00d4e369)
+      var div = d3.select("body").append("div")
+        .attr("class", "tooltip")
+        .style("opacity", 0);
+
       if(algorithm == "CN2"){
         g.selectAll('circle').data(data)
             .enter().append('circle')
@@ -143,15 +145,42 @@ const redraw = (graphData, cols, col_output, algorithm) => {
               .attr('cx', d => d.jitterX)
               .attr('r', d => Math.sqrt(d["weights"]) * circleRadius)
               .attr('fill', d => colorScale(colorValue(d)))
-              .style("opacity", 0.3);
-      } else{
+              .style("opacity", 0.5)
+              .on("mouseover", function(d) {
+                div.transition()
+                    .duration(200)
+                    .style("opacity", .9);
+                div.html(colX+": "+d[colX]+"<br/>"+colY+": "+d[colY])
+                    .style("left", (d3.event.pageX + 5) + "px")
+                    .style("top", (d3.event.pageY - 32) + "px");
+               })
+              .on("mouseout", function(d) {
+                div.transition()
+                    .duration(500)
+                    .style("opacity", 0);
+              });
+      } else if(algorithm == "PRIM"){
         g.selectAll('circle').data(data)
             .enter().append('circle')
               .attr('cy', d => d.jitterY)
               .attr('cx', d => d.jitterX)
               .attr('r', d => circleRadius)
               .attr('fill', d => colorScale(colorValue(d)))
+              .style("stroke", d => d["In_current_box"] == 1 ? "black" : "transparent")
               .style("opacity", 0.5);
+              .on("mouseover", function(d) {
+                div.transition()
+                    .duration(200)
+                    .style("opacity", .9);
+                div.html(colX+": "+d[colX]+"<br/>"+colY+": "+d[colY])
+                    .style("left", (d3.event.pageX + 5) + "px")
+                    .style("top", (d3.event.pageY - 32) + "px");
+               })
+              .on("mouseout", function(d) {
+                div.transition()
+                    .duration(500)
+                    .style("opacity", 0);
+              });
       }
 
 
