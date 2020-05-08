@@ -7,7 +7,7 @@ CN2-SD
 {% block content %}
     <div class="row">
         <div class="col">
-            <h1>Executing CN2-SD </h1>
+            <h2>Executing CN2-SD </h2>
             {% if end %}
                 <h3> It is finished! </h3>
             {% endif %}
@@ -18,7 +18,7 @@ CN2-SD
             <svg ></svg>
         </div>
         <div class="col-12">
-            <h2>Rules found:</h2>
+            <h3>Rules found:</h3>
             <table class="table table-hover table-responsive">
                 <thead>
                     <tr>
@@ -60,7 +60,7 @@ CN2-SD
         const graphData = {{ data.chart_data | safe }};
         const cols = {{ cols | safe }};
         const col_output = '{{ col_output | safe }}';
-        const resize = () => redraw_CN2(graphData,cols,col_output);
+        const resize = () => redraw(graphData,cols,col_output, "CN2");
         resize();
         window.onresize = resize;
     </script>
