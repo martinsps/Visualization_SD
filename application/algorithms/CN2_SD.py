@@ -22,10 +22,10 @@ def initialize_CN2_SD(input_data, col_output, positive_class, max_exp, min_wracc
     :param gamma: Parameter (> 0 and < 1) that controls the flow of the multiplicative method
     :return:
     """
-    check_input_data(input_data, col_output, positive_class)
-    check_parameters_CN2(max_exp, min_wracc, weight_method, gamma)
     # To convert positive_class to number if necessary (always comes as a string)
     positive_class = type(input_data[col_output][0])(positive_class)
+    check_input_data(input_data, col_output, positive_class)
+    check_parameters_CN2(max_exp, min_wracc, weight_method, gamma)
     return CN2_SD(input_data, col_output, positive_class, max_exp, min_wracc, weight_method, gamma)
 
 
@@ -108,11 +108,11 @@ class CN2_SD:
         end = False
         best_rule = self.find_best_rule()
         if best_rule and best_rule.wracc >= self.min_wracc:
-            # Update weights
-            self.apply_rule(best_rule)
             best_rule.coverage = self.get_coverage(best_rule)
             best_rule.support = self.get_support(best_rule)
             best_rule.significance = self.get_significance(best_rule)
+            # Update weights
+            self.apply_rule(best_rule)
             self.rule_list.append(best_rule)
         if self.stop_condition(best_rule):
             end = True
@@ -228,16 +228,18 @@ class CN2_SD:
         if self.weight_method == 1:
             self.current_data.loc[data_rule_positive.index, "weights"] = data_rule_positive["weight_times"].apply(
                 lambda x: self.gamma ** x)
-
+            self.current_data.loc[data_rule_positive.index, "weight_times"] = data_rule_positive["weight_times"].apply(
+                lambda x: x + 1)
         # Additive method
         elif self.weight_method == 2:
             self.current_data.loc[data_rule_positive.index, "weights"] = data_rule_positive["weight_times"].apply(
                 lambda x: 1 / (x + 1))
+            self.current_data.loc[data_rule_positive.index, "weight_times"] = data_rule_positive["weight_times"].apply(
+                lambda x: x + 1)
         # Normal CN2: examples covered eliminated
         elif self.weight_method == 0:
             self.current_data = data_frame_difference(self.current_data, data_rule)
-        self.current_data.loc[data_rule_positive.index, "weight_times"] = data_rule_positive["weight_times"].apply(
-            lambda x: x + 1)
+
 
     def stop_condition(self, best_rule):
         """
@@ -354,6 +356,8 @@ class CN2_SD:
             # n(Class_j)
             data_level = self.current_data[self.current_data[self.col_output] == level]
             n_data_level = len(data_level.index)
+            if n_data_level == 0:
+                continue
             significance += n_rule_level * math.log(n_rule_level / (n_data_level * cov))
         significance *= 2
         return significance
