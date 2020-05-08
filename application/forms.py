@@ -42,5 +42,8 @@ class PRIMForm(FlaskForm):
                             validators=[Optional(),
                                         NumberRange(min=0.000001, max=0.999999,
                                                     message="Must be a decimal > 0 and < 1.")])
-    ordinal_columns = FieldList(StringField('Ordinal columns', validators=[]))
+    ordinal_columns = StringField('Ordinal columns (separated by comma)', validators=[Optional()])
+    ordinal_columns_values = StringField('Ordered values of ordinal columns '
+                                         '(separated by comma for each column and by semicolon to separate columns)',
+                                         validators=[Optional()])
     submit = SubmitField('Start!')
