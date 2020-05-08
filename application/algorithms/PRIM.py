@@ -23,10 +23,10 @@ def initialize_PRIM(input_data, col_output, positive_class, alpha, threshold_box
     and the ordered list of values of those columns as "values"
     :return:
     """
-    check_input_data(input_data, col_output, positive_class)
-    check_parameters_PRIM(input_data, alpha, threshold_box, threshold_global, min_mean, ordinal_columns)
     # To convert positive_class to number if necessary (always comes as a string)
     positive_class = type(input_data[col_output][0])(positive_class)
+    check_input_data(input_data, col_output, positive_class)
+    check_parameters_PRIM(input_data, alpha, threshold_box, threshold_global, min_mean, ordinal_columns)
     return PRIM(input_data, col_output, positive_class, float(alpha), threshold_box, threshold_global, min_mean,
                 ordinal_columns)
 
@@ -537,6 +537,16 @@ class PRIM:
             significance += n_rule_level * math.log(n_rule_level / (n_data_level * cov))
         significance *= 2
         return significance
+
+    def get_current_box_bitmap(self, box_data):
+        """
+        Returns a column with the size of current data that
+        indicates which elements are in the box data.
+        """
+        bitmap = pd.DataFrame(index=self.current_data.index, columns=["In_current_box"])
+        bitmap["In_current_box"] = 0
+        bitmap.loc[box_data.index, "In_current_box"] = 1
+        return bitmap
 
 
 class Box:
