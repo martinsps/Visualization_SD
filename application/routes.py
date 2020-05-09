@@ -2,11 +2,12 @@ from flask import Blueprint, render_template, session, flash, redirect, url_for,
 from flask import current_app
 
 from .forms import CN2SDForm, PRIMForm
-from .algorithms.CN2_SD import CN2_SD, initialize_CN2_SD
-from .algorithms.PRIM import PRIM, initialize_PRIM, Box
+from .algorithms.CN2_SD import initialize_CN2_SD
+from .algorithms.PRIM import initialize_PRIM, Box
 import pandas as pd
 from .algorithms.errors import UserInputError
 import json
+from .VizRank.main import VizRank
 
 main_bp = Blueprint('main_bp', __name__,
                     template_folder='templates',
@@ -22,6 +23,10 @@ def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ['csv']
 
+
+##############
+# CN2 routes #
+##############
 
 @main_bp.route('/cn2', methods=['GET', 'POST'])
 def cn2():
@@ -78,29 +83,53 @@ def cn2():
 def cn2_exec():
     CN2 = session['CN2']
     end = False
+    best_rule = None
     if request.method == 'POST':
-        end, _ = CN2.do_step()
+        end, best_rule = CN2.do_step()
+    # Choose cols to show
+    data, cols = prepare_data_CN2(CN2, best_rule)
+    return render_template('cn2_exec.html', rule_list=CN2.rule_list, end=end, data=data, cols=cols,
+                           col_output=CN2.col_output)
+
+
+def prepare_data_CN2(CN2, last_rule):
+    """
+    Prepares data to be sent to template. First, it selects
+    the columns that will be in the graph via VizRank of checking
+    last rule found. Then, it also adds the output column and
+    the weights column. Finally, it transforms the data in those
+    columns to JSON format.
+    :param CN2: a CN2 algorithm object
+    :param last_rule: last rule found
+    :return: formatted data, ready to be send to template and columns selected
+    """
+    cols = []
+    if last_rule:
+        if len(last_rule.antecedents) > 1:
+            cols = [last_rule.antecedents[0].variable,
+                    last_rule.antecedents[1].variable]
+        elif len(last_rule.antecedents) == 1:
+            cols, _ = VizRank(input_data=CN2.current_data.drop(["weight_times", "weights"], axis=1),
+                              col_output=CN2.col_output,
+                              fixed_col=last_rule.antecedents[0].variable
+                              )
+    else:
+        cols, _ = VizRank(input_data=CN2.current_data.drop(["weight_times", "weights"], axis=1),
+                          col_output=CN2.col_output
+                          )
     data = CN2.current_data
-    col_output = CN2.col_output
-    # Choose cols
-    cols = ["Age", "Fare"]
-    cols_data = cols + ["weights"] + [col_output]
+    cols_data = cols + ["weights"] + [CN2.col_output]
     data = data[cols_data]
     # Prepare data por d3
     chart_data = data.to_dict(orient='records')
     chart_data = json.dumps(chart_data, indent=2)
     data = {'chart_data': chart_data}
-    return render_template('cn2_exec.html', rule_list=CN2.rule_list, end=end, data=data, cols=cols,
-                           col_output=col_output)
+    return data, cols
 
 
-@main_bp.route('/cn2/data', methods=['GET'])
-def cn2_data():
-    CN2 = session['CN2']
-    data = CN2.current_data
-
-    return data.to_json()
-
+###############
+# PRIM routes #
+###############
 
 @main_bp.route('/prim', methods=['GET', 'POST'])
 def prim():
@@ -124,10 +153,18 @@ def prim():
         if file:
             # Read csv file from request
             input_data = pd.read_csv(file)
-        current_app.logger.debug(form.ordinal_columns.data, "error")
-        # Check validity of parameters
         ordinal_columns = {}
+        if len(form.ordinal_columns.data) > 0:
+            # Names separated by comma
+            ordinal_col_names = [x.strip() for x in form.ordinal_columns.data.split(',')]
+            # Ordered column values lists separated by ;
+            ordinal_col_values = form.ordinal_columns_values.data.split(';')
         try:
+            if len(form.ordinal_columns.data) > 0:
+                for i, ord_col in enumerate(ordinal_col_names):
+                    # We convert string values to column type if necessary
+                    ordinal_columns[ord_col] = [type(input_data[ord_col][0])(x.strip())
+                                                for x in ordinal_col_values[i].split(',')]
             PRIM = initialize_PRIM(input_data=input_data,
                                    col_output=form.output_column.data,
                                    positive_class=form.positive_class.data,
@@ -148,17 +185,41 @@ def prim():
         session['PRIM'] = PRIM
         session['box_data'] = PRIM.current_data
         session['box'] = Box()
+        session['end_PRIM'] = False
         return redirect(url_for('main_bp.prim_exec'))
     return render_template('prim_main.html', form=form)
 
 
-def prepare_data_PRIM(PRIM):
-    data = PRIM.current_data
-    col_output = PRIM.col_output
+def prepare_data_PRIM(PRIM, current_box, box_data):
+    """
+    Prepares data to be sent to template. First, it selects
+    the columns that will be in the graph via VizRank of checking
+    boundaries in current box. Then, it also adds the output column
+    and the bitmap column for box data. Finally, it transforms the data
+    in those columns to JSON format.
+    :param PRIM: an object of PRIM's algorithm
+    :param current_box:
+    :param box_data:
+    :return: formatted data, ready to be send to template and columns selected
+    """
     # Choose cols
-    cols = ["Age", "Fare"]
-    cols_data = cols + [col_output]
-    data = data[cols_data]
+    cols = []
+    if len(current_box.boundary_list) > 0:
+        if len(current_box.boundary_list) > 1:
+            cols = [current_box.boundary_list[-2].variable_name,
+                    current_box.boundary_list[-1].variable_name]
+        elif len(current_box.boundary_list) == 1:
+            cols, _ = VizRank(input_data=PRIM.current_data,
+                              col_output=PRIM.col_output,
+                              fixed_col=current_box.boundary_list[0].variable_name
+                              )
+    else:
+        cols, _ = VizRank(input_data=PRIM.current_data,
+                          col_output=PRIM.col_output
+                          )
+    cols_data = cols + [PRIM.col_output]
+    data = PRIM.current_data[cols_data]
+    data["In_current_box"] = PRIM.get_current_box_bitmap(box_data)["In_current_box"]
     # Prepare data por d3
     chart_data = data.to_dict(orient='records')
     chart_data = json.dumps(chart_data, indent=2)
@@ -182,8 +243,8 @@ def prim_exec():
             pasting = True
             flash("Box is finished. Click the button to execute the pasting.", "info")
     else:
-        end_prim = PRIM.stop_condition_PRIM(box_data)
-    data, cols = prepare_data_PRIM(PRIM)
+        end_prim = session['end_PRIM']
+    data, cols = prepare_data_PRIM(PRIM, box, box_data)
     return render_template('prim_exec.html', box_list=PRIM.boxes, current_box=box, end_box=end_box, data=data,
                            cols=cols, col_output=PRIM.col_output, pasting=pasting, redundant=redundant,
                            end_prim=end_prim)
@@ -198,14 +259,12 @@ def prim_pasting():
     session['PRIM'] = PRIM
     session['box_data'] = box_data
     session['box'] = box
-    data, cols = prepare_data_PRIM(PRIM)
+    data, cols = prepare_data_PRIM(PRIM, box, box_data)
     flash("Pasting is finished. Click the button to execute the elimination of redundant input variables.", "info")
     return render_template('prim_exec.html', box_list=PRIM.boxes, current_box=box, end_box=True, data=data,
                            cols=cols, col_output=PRIM.col_output, pasting=False, redundant=True)
 
 
-#
-#
 @main_bp.route('/prim/redundant', methods=['POST'])
 def prim_redundant():
     PRIM = session['PRIM']
@@ -218,6 +277,7 @@ def prim_redundant():
         flash("No variables were eliminated!", "info")
     PRIM.update_variables(box, box_data)
     session['PRIM'] = PRIM
+    session['end_PRIM'] = PRIM.stop_condition_PRIM(box_data)
     session['box_data'] = PRIM.current_data
     session['box'] = Box()
     return redirect(url_for('main_bp.prim_exec'))
