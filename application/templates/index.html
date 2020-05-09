@@ -5,5 +5,46 @@ Página principal
 {% endblock %}
 
 {% block content %}
-    Página principal
+    <h1>Welcome! </h1>
+    <p>
+        This website offers the possibility of executing and visualizing subgroup algorithms step by step. For now, the
+        possibilities are:
+    </p>
+    <h2> CN2-SD</h2>
+    <p>
+        This algorithm consists on a modification of the classification rule learner algorithm CN2, adapted to subgroup
+        discovery, with extra features like weighted relative accuracy. It is based on an article that can be found in
+        <a href="http://www.jmlr.org/papers/volume5/lavrac04a/lavrac04a.pdf">here</a>. The step by step execution of this algorithm
+        lets you observe the data in a dynamic scatterplot whose axes will be selected taking into account the rules that
+        are being found (that describe subgroups). A slight modification of
+        <a href="https://www.researchgate.net/publication/225719533_VizRank_Data_Visualization_Guided_by_Machine_Learning"
+        >VizRank</a> is used to choose the best two axes (for class separation) in the first visualization. Also, the points
+        in the graph will vary in size, depending to the weight of each point (used in the algorithm). To start
+        the execution of this algorithm with your own data, click on the next button: <br>
+
+        <a class="btn btn-outline-info mt-2" href="{{ url_for('.cn2') }}"> Start! </a>
+
+    </p>
+
+    <h2> PRIM </h2>
+    <p>
+        This algorithm is the patient rule induction method and the article in which the implementation is based can be
+        found <a href="http://statweb.stanford.edu/~jhf/ftp/prim.pdf"> here</a>. It is designed to find (greedily) boxes
+        that characterise different subgroups in the data. These boxes are built by an iterative top-down peeling process,
+        a bottom-up pasting technique and a check for redundant variables. The step execution of this
+        algorithm lets you observe the data in a dynamic scatterplot whose axes will be selected taking into account the
+        variables selected to peel in the top-down process. Also, a slight modification of
+        <a href="https://www.researchgate.net/publication/225719533_VizRank_Data_Visualization_Guided_by_Machine_Learning"
+        >VizRank</a> is used to choose the best two axes (for class separation) in the first visualization of each step.
+        To start the execution of this algorithm with your own data, click on the next button: <br>
+
+        <a class="btn btn-outline-info mt-3" href="{{ url_for('.prim') }}"> Start! </a>
+
+    </p>
+
+
+    <footer class="footer">
+        Developed by Martín Sánchez-Pedreño Sánchez. <a href="https://github.com/martinsps/Visualization_SD">Source code in Github.</a>
+    </footer>
+
 {% endblock %}
