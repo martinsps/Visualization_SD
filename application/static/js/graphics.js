@@ -167,7 +167,7 @@ const redraw = (graphData, cols, col_output, algorithm) => {
               .attr('r', d => circleRadius)
               .attr('fill', d => colorScale(colorValue(d)))
               .style("stroke", d => d["In_current_box"] == 1 ? "black" : "transparent")
-              .style("opacity", 0.5);
+              .style("opacity", 0.5)
               .on("mouseover", function(d) {
                 div.transition()
                     .duration(200)
