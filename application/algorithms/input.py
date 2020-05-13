@@ -18,7 +18,7 @@ def check_parameters_PRIM(input_data, alpha, threshold_box, threshold_global, mi
         raise UserInputError("Box threshold must be a decimal > 0 and < 1.")
     if not isinstance(threshold_global, Number) or threshold_global <= 0 or threshold_global >= 1:
         raise UserInputError("Global threshold must be a decimal > 0 and < 1.")
-    if not isinstance(min_mean, Number) or min_mean <= 0 or min_mean >= 1:
+    if min_mean and (not isinstance(min_mean, Number) or min_mean <= 0 or min_mean >= 1):
         raise UserInputError("Mean minimum must be a decimal > 0 and < 1.")
     # Check ordinal columns
     for col_name in ordinal_columns.keys():
@@ -37,5 +37,5 @@ def check_parameters_CN2(max_exp, min_wracc, weight_method, gamma):
         raise UserInputError("Min WRAcc must be a decimal > 0 and <= 1.")
     if weight_method not in [0, 1, 2]:
         raise UserInputError("Weight method must be 0 (no method), 1 (multiplicative) or 2 (additive).")
-    if not isinstance(gamma, Number) or gamma <= 0 or min_wracc >= 1:
+    if not isinstance(gamma, Number) or gamma <= 0 or gamma >= 1:
         raise UserInputError("Gamma must be a decimal > 0 and < 1.")
