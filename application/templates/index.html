@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block title %}
-Página principal
+Main page
 {% endblock %}
 
 {% block content %}
@@ -19,7 +19,7 @@ Página principal
         are being found (that describe subgroups). A slight modification of
         <a href="https://www.researchgate.net/publication/225719533_VizRank_Data_Visualization_Guided_by_Machine_Learning"
         >VizRank</a> is used to choose the best two axes (for class separation) in the first visualization. Also, the points
-        in the graph will vary in size, depending to the weight of each point (used in the algorithm). To start
+        in the graph will decrease in size, depending on each point's "weight" (used in the algorithm). To start
         the execution of this algorithm with your own data, click on the next button: <br>
 
         <a class="btn btn-outline-info mt-2" href="{{ url_for('.cn2') }}"> Start! </a>
@@ -42,6 +42,13 @@ Página principal
 
     </p>
 
+    <h3>Example datasets</h3>
+    <p>
+        Also, we offer a few examples of datasets ready to download for you to try the algorithms. Click the button
+        to see them: <br>
+        <a class="btn btn-outline-info mt-3" href="{{ url_for('.examples_main') }}"> Examples </a>
+
+    </p>
 
     <footer class="footer">
         Developed by Martín Sánchez-Pedreño Sánchez. <a href="https://github.com/martinsps/Visualization_SD">Source code in Github.</a>
