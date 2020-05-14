@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block title %}
+Datasets
+{% endblock %}
+
+{% block content %}
+<h1>Example datasets: </h1>
+{% for key, item in titles_descriptions.items() %}
+    <h3> {{ item[0] }}</h3>
+    <p> {{ item[1] }} </p>
+    <form method="GET" action="{{ url_for('main_bp.examples_download', filename=key) }}">
+        <div class="form-group">
+            <input class="btn btn-outline-info" id="submit" name="submit" type="submit" value="Download">
+        </div>
+    </form>
+{% endfor %}
+{% endblock %}
