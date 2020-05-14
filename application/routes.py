@@ -1,4 +1,7 @@
-from flask import Blueprint, render_template, session, flash, redirect, url_for, request
+import os
+
+from flask import Blueprint, render_template, session, flash, redirect, url_for, request, abort, make_response, \
+    send_file
 from flask import current_app
 
 from .forms import CN2SDForm, PRIMForm
@@ -24,6 +27,31 @@ def allowed_file(filename):
            filename.rsplit('.', 1)[1].lower() in ['csv']
 
 
+@main_bp.route('/data_columns', methods=['POST'])
+def data_columns():
+    if 'input_file' not in request.files:
+        abort(make_response('No file part', 400))
+    file = request.files['input_file']
+    # If user does not select file, browser also
+    # submit an empty part without filename
+    if file.filename == '':
+        abort(make_response('No selected file', 400))
+    # Check for extension
+    if not allowed_file(file.filename):
+        abort(make_response('File must be a csv', 400))
+    # Read csv file from request
+    input_data = pd.read_csv(file).dropna()
+    info_columns = {}
+    columns = list(input_data.columns)
+    for col_name in columns:
+        column = input_data[col_name]
+        column = column.astype("category")
+        levels = column.unique()
+        info_columns[col_name] = list(levels)
+    # current_app.logger.debug(info_columns, 'error')
+    return json.dumps(info_columns, indent=2, allow_nan=False)
+
+
 ##############
 # CN2 routes #
 ##############
@@ -47,26 +75,21 @@ def cn2():
         if not allowed_file(file.filename):
             flash('File must be a csv', 'danger')
             return redirect(request.url)
-        if file:
-            # Read csv file from request
-            input_data = pd.read_csv(file)
+        # Read csv file from request
+        input_data = pd.read_csv(file)
         # Check validity of parameters
+        args = {"input_data": input_data.dropna(),
+                "col_output": form.output_column.data,
+                "positive_class": form.positive_class.data,
+                "weight_method": form.weight_method.data}
+        if form.gamma.data:
+            args["gamma"] = form.gamma.data
+        if form.max_expressions.data:
+            args["max_exp"] = form.max_expressions.data
+        if form.min_wracc.data:
+            args["min_wracc"] = form.min_wracc.data
         try:
-            if form.gamma.data:
-                CN2 = initialize_CN2_SD(input_data=input_data,
-                                        col_output=form.output_column.data,
-                                        positive_class=form.positive_class.data,
-                                        max_exp=form.max_expressions.data,
-                                        min_wracc=form.min_wracc.data,
-                                        weight_method=form.weight_method.data,
-                                        gamma=float(form.gamma.data))
-            else:
-                CN2 = initialize_CN2_SD(input_data=input_data,
-                                        col_output=form.output_column.data,
-                                        positive_class=form.positive_class.data,
-                                        max_exp=form.max_expressions.data,
-                                        min_wracc=form.min_wracc.data,
-                                        weight_method=form.weight_method.data)
+            CN2 = initialize_CN2_SD(**args)
         except UserInputError as error:
             flash(error.message, 'danger')
             return redirect(request.url)
@@ -106,8 +129,24 @@ def prepare_data_CN2(CN2, last_rule):
     cols = []
     if last_rule:
         if len(last_rule.antecedents) > 1:
-            cols = [last_rule.antecedents[0].variable,
-                    last_rule.antecedents[1].variable]
+            var1 = last_rule.antecedents[0].variable
+            var2 = last_rule.antecedents[1].variable
+            if var1 != var2:
+                cols = [var1, var2]
+            else:
+                actual_len = 2
+                end = False
+                while not end and actual_len < len(last_rule.antecedents):
+                    var2 = last_rule.antecedents[actual_len].variable
+                    actual_len += 1
+                    if var1 != var2:
+                        cols = [var1, var2]
+                        end = True
+                if not end:
+                    cols, _ = VizRank(input_data=CN2.current_data.drop(["weight_times", "weights"], axis=1),
+                                      col_output=CN2.col_output,
+                                      fixed_col=var1
+                                      )
         elif len(last_rule.antecedents) == 1:
             cols, _ = VizRank(input_data=CN2.current_data.drop(["weight_times", "weights"], axis=1),
                               col_output=CN2.col_output,
@@ -150,9 +189,8 @@ def prim():
         if not allowed_file(file.filename):
             flash('File must be a csv', 'danger')
             return redirect(request.url)
-        if file:
-            # Read csv file from request
-            input_data = pd.read_csv(file)
+        # Read csv file from request
+        input_data = pd.read_csv(file)
         ordinal_columns = {}
         if len(form.ordinal_columns.data) > 0:
             # Names separated by comma
@@ -165,16 +203,19 @@ def prim():
                     # We convert string values to column type if necessary
                     ordinal_columns[ord_col] = [type(input_data[ord_col][0])(x.strip())
                                                 for x in ordinal_col_values[i].split(',')]
-            PRIM = initialize_PRIM(input_data=input_data,
-                                   col_output=form.output_column.data,
-                                   positive_class=form.positive_class.data,
-                                   alpha=form.alpha.data,
-                                   threshold_global=form.threshold_global.data,
-                                   threshold_box=form.threshold_box.data,
-                                   min_mean=form.min_mean.data,
-                                   ordinal_columns=ordinal_columns
-                                   )
-
+            args = {"input_data": input_data.dropna(),
+                    "col_output": form.output_column.data,
+                    "positive_class": form.positive_class.data,
+                    "ordinal_columns": ordinal_columns}
+            if form.alpha.data:
+                args["alpha"] = form.alpha.data
+            if form.threshold_global.data:
+                args["threshold_global"] = form.threshold_global.data
+            if form.threshold_box.data:
+                args["threshold_box"] = form.threshold_box.data
+            if form.min_mean.data:
+                args["min_mean"] = form.min_mean.data
+            PRIM = initialize_PRIM(**args)
         except UserInputError as error:
             flash(error.message, 'danger')
             return redirect(request.url)
@@ -206,8 +247,24 @@ def prepare_data_PRIM(PRIM, current_box, box_data):
     cols = []
     if len(current_box.boundary_list) > 0:
         if len(current_box.boundary_list) > 1:
-            cols = [current_box.boundary_list[-2].variable_name,
-                    current_box.boundary_list[-1].variable_name]
+            var1 = current_box.boundary_list[-2].variable_name
+            var2 = current_box.boundary_list[-1].variable_name
+            if var1 != var2:
+                cols = [var1, var2]
+            else:
+                actual_len = 2
+                end = False
+                while not end and actual_len < len(current_box.boundary_list):
+                    actual_len += 1
+                    var1 = current_box.boundary_list[-actual_len].variable_name
+                    if var1 != var2:
+                        cols = [var1, var2]
+                        end = True
+                if not end:
+                    cols, _ = VizRank(input_data=PRIM.current_data,
+                                      col_output=PRIM.col_output,
+                                      fixed_col=var1
+                                      )
         elif len(current_box.boundary_list) == 1:
             cols, _ = VizRank(input_data=PRIM.current_data,
                               col_output=PRIM.col_output,
@@ -281,3 +338,47 @@ def prim_redundant():
     session['box_data'] = PRIM.current_data
     session['box'] = Box()
     return redirect(url_for('main_bp.prim_exec'))
+
+
+###################
+# Datasets routes #
+###################
+
+
+titles_descriptions = {
+    "diamonds.csv": ("Diamonds", "This dataset contains data about a set of diamonds, regarding some of their "
+                                 "properties like width, depth, cut or color. We can use the algorithms to "
+                                 "characterise the diamonds with a value of the variable \"cut\" such as \"Ideal\". "
+                                 "There are categorical, numeric and ordinal variables in this dataset. "
+                                 "The ordinal one is \"color\" whose order is defined as "
+                                 "J < I < H < G < F < E < D."),
+    "iris.csv": ("Iris", "Iris dataset, perhaps the best known database to be found in the pattern recognition "
+                         "literature. Predicted attribute: class of iris plant. All the other attributes "
+                         "are numeric and describe physical characteristics of each plant. It is not suitable "
+                         "for CN2-SD, as this implementation does not take numeric attributes into account."),
+    "mushrooms.csv": ("Mushrooms", "A dataset with information about mushrooms with a target class (\"class\") that "
+                                   "determines if the mushroom is edible (\"e\") or poisonous (\"p\"). The rest "
+                                   "of attributes are categorical and describe their characteristics. Information "
+                                   "about the attributes (and also the file) can be found in this URL: "
+                                   "https://www.kaggle.com/uciml/mushroom-classification "),
+    "titanic.csv": ("Titanic", "This dataset contains information about the passengers aboard the Titanic, including "
+                               "a target class (\"Survived\") that determines if the person survived the tragic "
+                               "accident. It contains both numeric and categorical attributes."),
+    "Pokemon.csv": ("Pokemon", "This dataset contains all the pokemons ever created, with characteristics regarding "
+                               "each pokemon's classes or attributes (like HP, attack...). With this dataset we can "
+                               "try to characterise the legendary ones, marked in the target variable \"Legendary\". ")
+}
+
+
+@main_bp.route('/examples', methods=['GET'])
+def examples_main():
+    return render_template('examples.html', titles_descriptions=titles_descriptions)
+
+
+dataset_folder = os.path.join(current_app.root_path, "static/data")
+
+
+@main_bp.route('/examples/<filename>', methods=['GET'])
+def examples_download(filename):
+    path = os.path.join(dataset_folder, filename)
+    return send_file(path, as_attachment=True)
