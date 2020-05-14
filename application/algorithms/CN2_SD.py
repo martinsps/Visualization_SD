@@ -5,7 +5,7 @@ from .utils import data_frame_difference
 import math
 
 
-def initialize_CN2_SD(input_data, col_output, positive_class, max_exp, min_wracc, weight_method, gamma=0.5):
+def initialize_CN2_SD(input_data, col_output, positive_class, weight_method, max_exp=3, min_wracc=0.05, gamma=0.5):
     """
     Checks input and initializes CN2 algorithm object. Throws errors such as
     UserInputError if input data or parameters are not correct.
@@ -26,7 +26,7 @@ def initialize_CN2_SD(input_data, col_output, positive_class, max_exp, min_wracc
     positive_class = type(input_data[col_output][0])(positive_class)
     check_input_data(input_data, col_output, positive_class)
     check_parameters_CN2(max_exp, min_wracc, weight_method, gamma)
-    return CN2_SD(input_data, col_output, positive_class, max_exp, min_wracc, weight_method, gamma)
+    return CN2_SD(input_data, col_output, positive_class, max_exp, min_wracc, weight_method, float(gamma))
 
 
 class CN2_SD:
@@ -356,7 +356,7 @@ class CN2_SD:
             # n(Class_j)
             data_level = self.current_data[self.current_data[self.col_output] == level]
             n_data_level = len(data_level.index)
-            if n_data_level == 0:
+            if n_data_level == 0 or n_rule_level == 0:
                 continue
             significance += n_rule_level * math.log(n_rule_level / (n_data_level * cov))
         significance *= 2
