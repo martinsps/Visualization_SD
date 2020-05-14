@@ -8,7 +8,7 @@ PRIM
     <div class="row">
         <div class="col col-lg-8">
             <div class="content-section">
-                <form method="POST" action="" enctype="multipart/form-data">
+                <form method="POST" action="" enctype="multipart/form-data" id="formPRIM">
                     {{ form.hidden_tag() }}
                     <fieldset class="form-group">
                         <legend class="border-bottom mb-4"> Parameters for the algorithm </legend>
@@ -103,7 +103,7 @@ PRIM
                                 {{ form.min_mean(class="form-control") }}
                             {% endif %}
                         </div>
-                        <div class="form-group">
+                        <div class="form-group d-none">
                             {{ form.ordinal_columns.label(class="form-control-label") }}
                             {% if form.ordinal_columns.errors %}
                                 {{ form.ordinal_columns(class="form-control is-invalid") }}
@@ -116,7 +116,7 @@ PRIM
                                 {{ form.ordinal_columns(class="form-control") }}
                             {% endif %}
                         </div>
-                        <div class="form-group">
+                        <div class="form-group d-none">
                             {{ form.ordinal_columns_values.label(class="form-control-label") }}
                             {% if form.ordinal_columns_values.errors %}
                                 {{ form.ordinal_columns_values(class="form-control is-invalid") }}
@@ -129,6 +129,12 @@ PRIM
                                 {{ form.ordinal_columns_values(class="form-control") }}
                             {% endif %}
                         </div>
+                        <div class="form-group" id="ordinal_cols_number_div" hidden>
+                            <label class="form-control-label" for="ordinal_cols_number">Number of ordinal columns</label>
+                            <input class="form-control" id="ordinal_cols_number" name="ordinal_cols_number" type="text" value="">
+                        </div>
+                        <div class="form-group" id="ordinal_cols_selection">
+                        </div>
                     </fieldset>
                     <div class="form-group">
                         {{ form.submit(class="btn btn-outline-info") }}
@@ -137,4 +143,148 @@ PRIM
             </div>
         </div>
     </div>
+{% endblock %}
+
+{% block additional_js %}
+<script src="{{ url_for('static', filename='js/table-dragger.min.js') }}"></script>
+<script>
+    var output_col_element = document.getElementById('output_column');
+    var ord_number = document.getElementById('ordinal_cols_number');
+    ord_number.onkeyup = function(e) {
+        e.preventDefault();
+        var ord_selection = document.getElementById('ordinal_cols_selection');
+        const col_output = output_col_element.value;
+        var n_possible_cols = 0;
+        for(var col in col_options){
+           // Only categorical variables can be ordinal (numerical are already)
+           if(col != col_output && typeof col_options[col][0] != "number"){
+               n_possible_cols += 1;
+           }
+        }
+        const choice = ord_number.value;
+        if(choice > n_possible_cols){
+            alert(`Maximum number of ordinal columns is ${n_possible_cols}.`);
+            ord_selection.innerHTML = "";
+            ord_number.value = "";
+            return;
+        }
+        var text = "";
+        for (var i = 1; i <= choice; i++) {
+            text += '<div class="form-group">';
+            text += `<label class="form-control-label" for="col_name_${i}"> Ordinal column ${i}: </label>`;
+            text += `<select class="form-control" id="col_name_${i}" name="col_name_${i}" onchange="update_selects(this, ${i});"></select>`
+            text += '</div>';
+            text += `<div class="form-group" id="ordinal_div_${i}">`;
+            text += '</div>';
+            /*
+            text += '<div class="form-group">';
+            text += `<label class="form-control-label" for="col_orders_${i}"> Ordinal column ${i} order: </label>`;
+            text += `<select class="form-control" id="col_orders_${i}" name="col_orders_${i}" onchange="update_ordinal();"></select>`
+            text += '</div>';
+            text += '<div class="form-group">';
+            text += `<label class="form-control-label" for="col_values_${i}"> Ordinal column ${i} values in order (separated by comma): </label>`;
+            text += `<input class="form-control" type="text" id="col_values_${i}" name="col_values_${i}" onchange="update_ordinal_values();">`
+            text += '</div>';
+            */
+        }
+        ord_selection.innerHTML = text;
+        for (var i = 1; i <= choice; i++) {
+            $(`#col_name_${i}`).append(new Option("", ""));
+            for(var col in col_options){
+               // Only categorical variables can be ordinal (numerical are already)
+               if(col != col_output && typeof col_options[col][0] != "number"){
+                   $(`#col_name_${i}`).append(new Option(col, col));
+               }
+            }
+        }
+    };
+
+    function update_selects(sel_object, index){
+        if(sel_object.value == ""){
+            $(`#ordinal_div_${index}`).html("");
+            return;
+        }
+        const choice = ord_number.value;
+        var correct = true;
+        for (var i = 1; i <= choice; i++) {
+            if(i != index){
+                if($(`#col_name_${i}`).val() == sel_object.value){
+                    correct = false;
+                }
+            }
+        }
+        if(!correct){
+            alert('Option already chosen!');
+            $(sel_object).val('');
+            $(`#ordinal_div_${index}`).html("");
+        } else{
+            // Build drag and drop table
+            var table = "";
+            table += `<table class="table table-hover table-bordered" id="table_ord_${index}">`;
+            table += "<thead>";
+            table += "<tr>";
+            table += `<th scope="col" style="font-weight: normal;"> Ordinal column ${index} values in ascending order: </th>`;
+            table += "</tr>";
+            table += "</thead>";
+            table += "<tbody>";
+            col_options[sel_object.value].forEach(function (item, i) {
+              table += "<tr>";
+              table += `<td>${item}</td>`;
+              table += "</tr>";
+            });
+            table += "</tbody>";
+            table += "</table>";
+            $(`#ordinal_div_${index}`).html(table);
+            var dragger = tableDragger(document.querySelector(`#table_ord_${index}`), { mode: "row", onlyBody: true });
+            dragger.on('drop',function(){
+                update_ordinal_values();
+            });
+            update_ordinal_values();
+        }
+    }
+
+    function update_ordinal_values(table){
+        const choice = ord_number.value;
+        var names = "";
+        var values = "";
+        for (var i = 1; i <= choice; i++) {
+            names += $(`#col_name_${i}`).val();
+            names += ",";
+            // Start in 1 because header is not a value
+            table = document.getElementById(`table_ord_${i}`);
+            if(table){
+                var table_values = "";
+                for (var j = 1, row; row = table.rows[j]; j++) {
+                   var cell = row.cells[0];
+                   table_values += cell.innerHTML;
+                   table_values += ",";
+                }
+                values += table_values.slice(0, -1);
+                values += ";";
+            }
+
+        }
+        // Set the values in the form inputs that are really sent to the server
+        $('#ordinal_columns').val(names.slice(0, -1));
+        $('#ordinal_columns_values').val(values.slice(0, -1));
+    }
+
+    $("#formPRIM").submit(function(event){
+        // We just check for ordinal columns not to be empty
+        var valid = true;
+        const choice = ord_number.value;
+        for (var i = 1; i <= choice; i++) {
+            if ($(`#col_name_${i}`).val() == ""){
+                valid = false;
+                break;
+            }
+        }
+        if(!valid){
+            alert("Fill every ordinal column!");
+            event.preventDefault();
+        }
+        return valid;
+    });
+
+</script>
 {% endblock %}
