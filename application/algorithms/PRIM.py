@@ -512,7 +512,9 @@ class PRIM:
         """
         # Determine if box_data support is below the threshold_box
         support = len(box_data.index) / self.N
-        return support <= self.threshold_box
+        # If we reached maximum mean, the box is already optimal
+        mean = self.calculate_mean(box_data)
+        return support <= self.threshold_box or mean == 1
 
     def get_coverage(self, box_data):
         return len(box_data.index) / self.N
