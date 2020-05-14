@@ -5,8 +5,8 @@ import math
 from .input import check_input_data, check_parameters_PRIM
 
 
-def initialize_PRIM(input_data, col_output, positive_class, alpha, threshold_box, threshold_global, min_mean,
-                    ordinal_columns):
+def initialize_PRIM(input_data, col_output, positive_class, ordinal_columns, alpha=0.1, threshold_box=0.1,
+                    threshold_global=0.1, min_mean=None):
     """
     Checks input and initializes CN2 algorithm object. Throws errors such as
     UserInputError if input data or parameters are not correct.
@@ -534,6 +534,8 @@ class PRIM:
             # n(Class_j)
             data_level = self.input_data[self.input_data[self.col_output] == level]
             n_data_level = len(data_level.index)
+            if n_data_level == 0 or n_rule_level == 0:
+                continue
             significance += n_rule_level * math.log(n_rule_level / (n_data_level * cov))
         significance *= 2
         return significance
