@@ -224,14 +224,12 @@ def prim():
             return redirect(request.url)
         # Set session PRIM object and variables
         session['PRIM'] = PRIM
-        session['box_data'] = PRIM.current_data
-        session['box'] = Box()
         session['end_PRIM'] = False
         return redirect(url_for('main_bp.prim_exec'))
     return render_template('prim_main.html', form=form)
 
 
-def prepare_data_PRIM(PRIM, current_box, box_data):
+def prepare_data_PRIM(PRIM):
     """
     Prepares data to be sent to template. First, it selects
     the columns that will be in the graph via VizRank of checking
@@ -239,24 +237,22 @@ def prepare_data_PRIM(PRIM, current_box, box_data):
     and the bitmap column for box data. Finally, it transforms the data
     in those columns to JSON format.
     :param PRIM: an object of PRIM's algorithm
-    :param current_box:
-    :param box_data:
     :return: formatted data, ready to be send to template and columns selected
     """
     # Choose cols
     cols = []
-    if len(current_box.boundary_list) > 0:
-        if len(current_box.boundary_list) > 1:
-            var1 = current_box.boundary_list[-2].variable_name
-            var2 = current_box.boundary_list[-1].variable_name
+    if len(PRIM.current_box.boundary_list) > 0:
+        if len(PRIM.current_box.boundary_list) > 1:
+            var1 = PRIM.current_box.boundary_list[-2].variable_name
+            var2 = PRIM.current_box.boundary_list[-1].variable_name
             if var1 != var2:
                 cols = [var1, var2]
             else:
                 actual_len = 2
                 end = False
-                while not end and actual_len < len(current_box.boundary_list):
+                while not end and actual_len < len(PRIM.current_box.boundary_list):
                     actual_len += 1
-                    var1 = current_box.boundary_list[-actual_len].variable_name
+                    var1 = PRIM.current_box.boundary_list[-actual_len].variable_name
                     if var1 != var2:
                         cols = [var1, var2]
                         end = True
@@ -265,10 +261,10 @@ def prepare_data_PRIM(PRIM, current_box, box_data):
                                       col_output=PRIM.col_output,
                                       fixed_col=var1
                                       )
-        elif len(current_box.boundary_list) == 1:
+        elif len(PRIM.current_box.boundary_list) == 1:
             cols, _ = VizRank(input_data=PRIM.current_data,
                               col_output=PRIM.col_output,
-                              fixed_col=current_box.boundary_list[0].variable_name
+                              fixed_col=PRIM.current_box.boundary_list[0].variable_name
                               )
     else:
         cols, _ = VizRank(input_data=PRIM.current_data,
@@ -276,7 +272,7 @@ def prepare_data_PRIM(PRIM, current_box, box_data):
                           )
     cols_data = cols + [PRIM.col_output]
     data = PRIM.current_data[cols_data]
-    data["In_current_box"] = PRIM.get_current_box_bitmap(box_data)["In_current_box"]
+    data["In_current_box"] = PRIM.get_current_box_bitmap(PRIM.box_data)["In_current_box"]
     # Prepare data por d3
     chart_data = data.to_dict(orient='records')
     chart_data = json.dumps(chart_data, indent=2)
@@ -287,56 +283,46 @@ def prepare_data_PRIM(PRIM, current_box, box_data):
 @main_bp.route('/prim/exec', methods=['GET', 'POST'])
 def prim_exec():
     PRIM = session['PRIM']
-    box_data = session['box_data']
-    box = session['box']
     end_box, end_prim = False, False
     pasting, redundant = False, False
     if request.method == 'POST':
-        box, box_data, end_box = PRIM.do_step_box(box, box_data)
+        end_box = PRIM.do_step_box()
         session['PRIM'] = PRIM
-        session['box_data'] = box_data
-        session['box'] = box
         if end_box:
             pasting = True
             flash("Box is finished. Click the button to execute the pasting.", "info")
     else:
         end_prim = session['end_PRIM']
-    data, cols = prepare_data_PRIM(PRIM, box, box_data)
-    return render_template('prim_exec.html', box_list=PRIM.boxes, current_box=box, end_box=end_box, data=data,
-                           cols=cols, col_output=PRIM.col_output, pasting=pasting, redundant=redundant,
+    data, cols = prepare_data_PRIM(PRIM)
+    return render_template('prim_exec.html', box_list=PRIM.boxes, current_box=PRIM.current_box, end_box=end_box,
+                           data=data, cols=cols, col_output=PRIM.col_output, pasting=pasting, redundant=redundant,
                            end_prim=end_prim)
 
 
 @main_bp.route('/prim/pasting', methods=['POST'])
 def prim_pasting():
     PRIM = session['PRIM']
-    box_data = session['box_data']
-    box = session['box']
-    box, box_data = PRIM.bottom_up_pasting(box, box_data)
+    variables_pasted = PRIM.bottom_up_pasting()
+    if len(variables_pasted) > 0:
+        flash(f"The following variables were modified in the pasting: {variables_pasted}  Click the button to execute the elimination of redundant input variables.", "success")
+    else:
+        flash("No variables were modified!  Click the button to execute the elimination of redundant input variables.", "info")
     session['PRIM'] = PRIM
-    session['box_data'] = box_data
-    session['box'] = box
-    data, cols = prepare_data_PRIM(PRIM, box, box_data)
-    flash("Pasting is finished. Click the button to execute the elimination of redundant input variables.", "info")
-    return render_template('prim_exec.html', box_list=PRIM.boxes, current_box=box, end_box=True, data=data,
+    data, cols = prepare_data_PRIM(PRIM)
+    return render_template('prim_exec.html', box_list=PRIM.boxes, current_box=PRIM.current_box, end_box=True, data=data,
                            cols=cols, col_output=PRIM.col_output, pasting=False, redundant=True)
 
 
 @main_bp.route('/prim/redundant', methods=['POST'])
 def prim_redundant():
     PRIM = session['PRIM']
-    box_data = session['box_data']
-    box = session['box']
-    box, box_data, variables_eliminated = PRIM.redundant_input_variables(box, box_data)
+    variables_eliminated, end_prim = PRIM.redundant_input_variables()
     if len(variables_eliminated) > 0:
         flash(f"The following variables were eliminated from the box: {variables_eliminated}", "success")
     else:
         flash("No variables were eliminated!", "info")
-    PRIM.update_variables(box, box_data)
+    session['end_PRIM'] = end_prim
     session['PRIM'] = PRIM
-    session['end_PRIM'] = PRIM.stop_condition_PRIM(box_data)
-    session['box_data'] = PRIM.current_data
-    session['box'] = Box()
     return redirect(url_for('main_bp.prim_exec'))
 
 
