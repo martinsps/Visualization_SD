@@ -90,6 +90,8 @@ class PRIM:
         self.ordinal_columns = ordinal_columns
         # Boxes (subgroups) found
         self.boxes = []
+        self.current_box = Box()
+        self.box_data = self.current_data
 
     def execute(self):
         """
@@ -99,16 +101,11 @@ class PRIM:
         end_prim = False
         while not end_prim:
             end_box = False
-            box_data = self.current_data
-            box = Box()
             while not end_box:
-                box, box_data, end_box = self.do_step_box(box, box_data)
+                end_box = self.do_step_box()
                 if end_box:
-                    box, box_data = self.bottom_up_pasting(box, box_data)
-                    box, box_data, variables_eliminated = self.redundant_input_variables(box, box_data)
-                    self.update_variables(box, box_data)
-            if self.stop_condition_PRIM(box_data):
-                end_prim = True
+                    variables_pasted = self.bottom_up_pasting()
+                    variables_eliminated, end_prim = self.redundant_input_variables()
         for i, box in enumerate(self.boxes):
             print("Box", (i + 1), ":")
             for boundary in box.boundary_list:
@@ -116,42 +113,40 @@ class PRIM:
             print(box.mean)
             print("=============")
 
-    def do_step_box(self, box, box_data):
+    def do_step_box(self):
         """
         Performs a step within the finding of a box in the PRIM's algorithm.
         First, it generates all possible boundaries and the chooses the best one
         according to the generated mean. Finally, it updates the box and box_data.
-        :param box: Current box that is being built
-        :param box_data: The data (left) in which the box is being built
         :return: The box and box_data updated with a new boundary and a boolean
         that indicates if the end condition for the box has been reached
         """
         # Generate all possible boundaries within current data
-        possible_boundaries = self.generate_boundaries(box_data)
+        possible_boundaries = self.generate_boundaries(self.box_data)
         # Choose the best one
-        best_boundary = self.select_best_boundary(possible_boundaries, box_data)
+        best_boundary = self.select_best_boundary(possible_boundaries, self.box_data)
         # Eliminate instances of new boundary found
-        box_data = self.apply_boundary(best_boundary, box_data)
-        box.add_boundary(best_boundary)
-        box.mean = self.calculate_mean(box_data)
-        return box, box_data, self.stop_condition_box(box_data)
+        self.box_data = self.apply_boundary(best_boundary, self.box_data)
+        self.current_box.add_boundary(best_boundary)
+        self.current_box.mean = self.calculate_mean(self.box_data)
+        return self.stop_condition_box()
 
-    def update_variables(self, box, box_data):
+    def update_variables(self):
         """
         Updates current data and box list if box found was
         suitable (refactored from original code to make it
         so that it can be done easily from flask)
-        :param box:
-        :param box_data:
         :return:
         """
         # Only added if it has a minimum box mean
-        if box.mean >= self.min_mean:
-            box.coverage = self.get_coverage(box_data)
-            box.support = self.get_support(box_data)
-            box.significance = self.get_significance(box_data)
-            self.boxes.append(box)
-            self.current_data = self.remove_box(box_data, self.current_data)
+        if self.current_box.mean >= self.min_mean:
+            self.current_box.coverage = self.get_coverage(self.box_data)
+            self.current_box.support = self.get_support(self.box_data)
+            self.current_box.significance = self.get_significance(self.box_data)
+            self.boxes.append(self.current_box)
+            self.current_data = self.remove_box(self.box_data, self.current_data)
+        self.box_data = self.current_data
+        self.current_box = Box()
 
     def generate_boundaries(self, data):
         """
@@ -304,28 +299,29 @@ class PRIM:
         data_box = self.apply_box(box, data_box)
         return self.calculate_mean(data_box)
 
-    def bottom_up_pasting(self, box, box_data):
+    def bottom_up_pasting(self):
         """
         Performs the bottom-up pasting phase of PRIM's algorithm.
         It tries to paste some values to the current boundaries of the
         box that will increase output mean. The pasting
         continues until no mean gain is obtained.
-        :param box: Current box (before pasting)
-        :param box_data: Current box data (before pasting)
         :return: Box and box data after pasting (may or may not be bigger)
         """
         # Number of observations for pasting with real variables
         end_pasting = False
-        data_enlarged = box_data
+        data_enlarged = self.box_data
+        variables_pasted = []
         while not end_pasting:
-            boundary, mean_gain = self.select_best_pasting(box, data_enlarged, self.current_data)
+            boundary, mean_gain = self.select_best_pasting(self.current_box, data_enlarged, self.current_data)
             if mean_gain > 0:
-                box.add_boundary(boundary)
-                data_enlarged = self.apply_pasting(box, data_enlarged, self.current_data)
-                box.mean = self.calculate_mean(data_enlarged)
+                variables_pasted.append(boundary.variable_name)
+                self.current_box.add_boundary(boundary)
+                data_enlarged = self.apply_pasting(self.current_box, data_enlarged, self.current_data)
+                self.current_box.mean = self.calculate_mean(data_enlarged)
             else:
                 end_pasting = True
-        return box, data_enlarged
+        self.box_data = data_enlarged
+        return variables_pasted
 
     def select_best_pasting(self, box, box_data, data):
         """
@@ -443,7 +439,7 @@ class PRIM:
         box_data = pd.concat([box_data, data_frame_difference(data_applied_box, box_data)])
         return box_data
 
-    def redundant_input_variables(self, box, box_data):
+    def redundant_input_variables(self):
         """
         Performs the redundant input variables phase of PRIM's algorithm.
         It calculates the gain of eliminating each variable from the box and
@@ -451,20 +447,18 @@ class PRIM:
         executes the pasting of previously eliminated elements. This process is
         repeated until one variable is left in the box or no mean gain is obtained
         from eliminating a new variable.
-        :param box: Current box
-        :param box_data: Box data
         :return The new box and box_data after the process of redundant input
         variable elimination and a list with the variables eliminated in order
         """
         variables_eliminated = []
         end = False
         while not end:
-            mean = self.calculate_mean(box_data)
+            mean = self.calculate_mean(self.box_data)
             best_mean_gain = 0
             variable_best_mean_gain = ""
             box_best_mean_gain = {}
             variable_list = []
-            for boundary in box.boundary_list:
+            for boundary in self.current_box.boundary_list:
                 if boundary.variable_name not in variable_list:
                     variable_list.append(boundary.variable_name)
             # If there is only one variable left, it exits
@@ -472,7 +466,7 @@ class PRIM:
                 end = True
             else:
                 for variable in variable_list:
-                    box_aux = Box.box_copy(box)
+                    box_aux = Box.box_copy(self.current_box)
                     for boundary in box_aux.boundary_list:
                         if boundary.variable_name == variable:
                             box_aux.boundary_list.remove(boundary)
@@ -483,15 +477,19 @@ class PRIM:
                         box_best_mean_gain = box_aux
                 if best_mean_gain > 0:
                     # Eliminate the variable applying pasting with box
-                    box_data = self.apply_pasting(box_best_mean_gain, box_data, self.current_data)
-                    box = box_best_mean_gain
-                    box.mean = self.calculate_mean(box_data)
+                    self.box_data = self.apply_pasting(box_best_mean_gain, self.box_data, self.current_data)
+                    self.current_box = box_best_mean_gain
+                    self.current_box.mean = self.calculate_mean(self.box_data)
                     variables_eliminated.append(variable_best_mean_gain)
                 else:
                     end = True
-        return box, box_data, variables_eliminated
+        # Check for the end before updating because it depends on current_box data
+        end_prim = self.stop_condition_PRIM()
+        # We update variables (this is the last method called before next box)
+        self.update_variables()
+        return variables_eliminated, end_prim
 
-    def stop_condition_PRIM(self, box_data):
+    def stop_condition_PRIM(self):
         """
         Determines if PRIM has ended, that is, every subgroup has been
         found given initial parameters and conditions.
@@ -500,20 +498,20 @@ class PRIM:
         2. The support of the remaining data is lower than threshold
         :return: True if stop condition has been reached, False if it has not
         """
-        mean = self.calculate_mean(box_data)
+        mean = self.calculate_mean(self.box_data)
         support = len(self.current_data.index) / self.N
         return mean < self.min_mean or support < self.threshold_global
 
-    def stop_condition_box(self, box_data):
+    def stop_condition_box(self):
         """
         Determines if this iteration of peeling has ended, that is,
         a new box has been found given algorithm parameters and conditions.
         :return: True if stop condition has been reached, False if it has not
         """
         # Determine if box_data support is below the threshold_box
-        support = len(box_data.index) / self.N
+        support = len(self.box_data.index) / self.N
         # If we reached maximum mean, the box is already optimal
-        mean = self.calculate_mean(box_data)
+        mean = self.calculate_mean(self.box_data)
         return support <= self.threshold_box or mean == 1
 
     def get_coverage(self, box_data):
