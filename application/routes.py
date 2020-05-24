@@ -304,9 +304,11 @@ def prim_pasting():
     PRIM = session['PRIM']
     variables_pasted = PRIM.bottom_up_pasting()
     if len(variables_pasted) > 0:
-        flash(f"The following variables were modified in the pasting: {variables_pasted}  Click the button to execute the elimination of redundant input variables.", "success")
+        flash(f"The following variables were modified in the pasting: {variables_pasted}."
+              f" Click the button to execute the elimination of redundant input variables.", "success")
     else:
-        flash("No variables were modified!  Click the button to execute the elimination of redundant input variables.", "info")
+        flash("No variables were modified!  Click the button to execute the elimination of redundant input variables.",
+              "info")
     session['PRIM'] = PRIM
     data, cols = prepare_data_PRIM(PRIM)
     return render_template('prim_exec.html', box_list=PRIM.boxes, current_box=PRIM.current_box, end_box=True, data=data,
