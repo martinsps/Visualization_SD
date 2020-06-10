@@ -314,7 +314,9 @@ class PRIM:
         while not end_pasting:
             boundary, mean_gain = self.select_best_pasting(self.current_box, data_enlarged, self.current_data)
             if mean_gain > 0:
-                variables_pasted.append(boundary.variable_name)
+                # Add it if it is not there
+                if boundary.variable_name not in variables_pasted:
+                    variables_pasted.append(boundary.variable_name)
                 self.current_box.add_boundary(boundary)
                 data_enlarged = self.apply_pasting(self.current_box, data_enlarged, self.current_data)
                 self.current_box.mean = self.calculate_mean(data_enlarged)
