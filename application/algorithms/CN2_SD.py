@@ -125,8 +125,6 @@ class CN2_SD:
         rule_set = []
         best_rule = None
         selector_list = self.generate_selectors()
-        # for sel in selector_list:
-        #     print(sel)
         end_find = False
         first = True
         while not end_find:
