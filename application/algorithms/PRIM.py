@@ -75,6 +75,8 @@ class PRIM:
         # Initialize attributes
         self.input_data = input_data
         self.current_data = input_data
+        # Add subgroup column (for visualization)
+        self.input_data = self.add_subgroup_column(self.input_data)
         # Size of input data
         self.N = len(input_data.index)
         self.col_output = col_output
@@ -101,11 +103,13 @@ class PRIM:
         end_prim = False
         while not end_prim:
             end_box = False
+
             while not end_box:
                 end_box = self.do_step_box()
                 if end_box:
                     variables_pasted = self.bottom_up_pasting()
                     variables_eliminated, end_prim = self.redundant_input_variables()
+
         for i, box in enumerate(self.boxes):
             print("Box", (i + 1), ":")
             for boundary in box.boundary_list:
@@ -145,6 +149,9 @@ class PRIM:
             self.current_box.significance = self.get_significance(self.box_data)
             self.boxes.append(self.current_box)
             self.current_data = self.remove_box(self.box_data, self.current_data)
+            # We set the subgroup number to the data (for its use in visualization)
+            subgroup_number = len(self.boxes) + 1
+            self.input_data.loc[self.box_data.index, "subgroup"] = subgroup_number
         self.box_data = self.current_data
         self.current_box = Box()
 
@@ -551,6 +558,15 @@ class PRIM:
         bitmap["In_current_box"] = 0
         bitmap.loc[box_data.index, "In_current_box"] = 1
         return bitmap
+
+    def add_subgroup_column(self, data):
+        """
+        Adds a new column to save the subgroup that each element
+        belongs to (0 indicates none), for visualization purposes.
+        """
+        initial_subgroup = np.zeros(len(data.index))
+        data["subgroup"] = initial_subgroup
+        return data
 
 
 class Box:
