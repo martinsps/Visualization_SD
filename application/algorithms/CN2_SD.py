@@ -82,6 +82,8 @@ class CN2_SD:
         self.gamma = gamma
         # Initialize current_data (we keep track of weights)
         self.current_data = self.add_weights(input_data)
+        # Add subgroup numbers column
+        self.current_data = self.add_subgroup_column(self.current_data)
         # Initialize current rule list as empty
         self.rule_list = []
 
@@ -149,9 +151,11 @@ class CN2_SD:
         # Only categorical and integer variables are used:
         # real variables have to be in intervals
         level_categories = ["object", "category", "int64", "int32"]
+        # Weights, output and subgroup columns are not used for selectors
+        prohibited_columns = ["weights", "weight_times", "subgroups", self.col_output]
         selectors = []
         for col_name in self.current_data.columns:
-            if col_name != self.col_output:
+            if col_name not in prohibited_columns:
                 col_type = self.current_data[col_name].dtype
                 if col_type.name in level_categories:
                     column = self.current_data[col_name].astype("category")
@@ -217,24 +221,29 @@ class CN2_SD:
         data_rule = self.current_data
         for antecedent in rule.antecedents:
             data_rule = data_rule[data_rule[antecedent.variable] == antecedent.value]
+        # Add subgroup number to list (it is not yet added to the list)
+        subgroup_number = len(self.rule_list) + 1
+        self.current_data.loc[data_rule.index, "subgroups"] = data_rule["subgroups"].apply(
+            lambda x: x + [subgroup_number])
         # Only the ones of the positive class
         data_rule_positive = data_rule[data_rule[self.col_output] == self.positive_class]
         # Multiplicative method
         if self.weight_method == 1:
-            self.current_data.loc[data_rule_positive.index, "weights"] = data_rule_positive["weight_times"].apply(
-                lambda x: self.gamma ** x)
             self.current_data.loc[data_rule_positive.index, "weight_times"] = data_rule_positive["weight_times"].apply(
                 lambda x: x + 1)
+            # (x+1) because weight times is not updated in "data_rule_positive"
+            self.current_data.loc[data_rule_positive.index, "weights"] = data_rule_positive["weight_times"].apply(
+                lambda x: self.gamma ** (x+1))
         # Additive method
         elif self.weight_method == 2:
-            self.current_data.loc[data_rule_positive.index, "weights"] = data_rule_positive["weight_times"].apply(
-                lambda x: 1 / (x + 1))
             self.current_data.loc[data_rule_positive.index, "weight_times"] = data_rule_positive["weight_times"].apply(
                 lambda x: x + 1)
+            # (x+1) because weight times is not updated in "data_rule_positive"
+            self.current_data.loc[data_rule_positive.index, "weights"] = data_rule_positive["weight_times"].apply(
+                lambda x: 1 / ((x+1) + 1))
         # Normal CN2: examples covered eliminated
         elif self.weight_method == 0:
             self.current_data = data_frame_difference(self.current_data, data_rule)
-
 
     def stop_condition(self, best_rule):
         """
@@ -356,6 +365,15 @@ class CN2_SD:
             significance += n_rule_level * math.log(n_rule_level / (n_data_level * cov))
         significance *= 2
         return significance
+
+    def add_subgroup_column(self, data):
+        """
+        Adds a new column to save the subgroups that each element
+        belongs to, for visualization purposes.
+        """
+        initial_subgroups = [list() for x in range(len(data.index))]
+        data["subgroups"] = initial_subgroups
+        return data
 
 
 class Rule:
