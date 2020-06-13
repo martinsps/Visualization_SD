@@ -150,7 +150,7 @@ class PRIM:
             self.boxes.append(self.current_box)
             self.current_data = self.remove_box(self.box_data, self.current_data)
             # We set the subgroup number to the data (for its use in visualization)
-            subgroup_number = len(self.boxes) + 1
+            subgroup_number = len(self.boxes)
             self.input_data.loc[self.box_data.index, "subgroup"] = subgroup_number
         self.box_data = self.current_data
         self.current_box = Box()
