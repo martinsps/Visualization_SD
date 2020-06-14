@@ -195,7 +195,7 @@ const redraw = (graphData, cols, col_output, algorithm, end, subgroups) => {
               const yBottom = innerHeight+prop*15;
               const yTop = -prop*15;
               if(algorithm.typeBoundary == "&lt;=" || algorithm.typeBoundary == "&lt;"){
-                  algorithm.valueBoundary = +valueBoundary
+                  algorithm.valueBoundary = +algorithm.valueBoundary
                   const xStart = xScale(algorithm.valueBoundary);
                   const xLeft = xScale(algorithm.valueBoundary) - prop*15;
                   g.append('line')
