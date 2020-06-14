@@ -110,24 +110,25 @@ def cn2_exec():
     if request.method == 'POST':
         end, best_rule = CN2.do_step()
     # Choose cols to show
-    data, cols = prepare_data_CN2(CN2, best_rule)
+    data, cols = prepare_data_CN2(CN2, best_rule, end)
     return render_template('cn2_exec.html', rule_list=CN2.rule_list, end=end, data=data, cols=cols,
                            col_output=CN2.col_output)
 
 
-def prepare_data_CN2(CN2, last_rule):
+def prepare_data_CN2(CN2, last_rule, end_cn2):
     """
     Prepares data to be sent to template. First, it selects
     the columns that will be in the graph via VizRank of checking
     last rule found. Then, it also adds the output column and
     the weights column. Finally, it transforms the data in those
     columns to JSON format.
+    :param end_cn2:
     :param CN2: a CN2 algorithm object
     :param last_rule: last rule found
     :return: formatted data, ready to be send to template and columns selected
     """
     cols = []
-    if last_rule:
+    if last_rule and not end_cn2:
         if len(last_rule.antecedents) > 1:
             var1 = last_rule.antecedents[0].variable
             var2 = last_rule.antecedents[1].variable
@@ -143,21 +144,23 @@ def prepare_data_CN2(CN2, last_rule):
                         cols = [var1, var2]
                         end = True
                 if not end:
-                    cols, _ = VizRank(input_data=CN2.current_data.drop(["weight_times", "weights"], axis=1),
+                    cols, _ = VizRank(input_data=CN2.current_data.drop(["weight_times", "weights", "subgroups"], axis=1),
                                       col_output=CN2.col_output,
                                       fixed_col=var1
                                       )
         elif len(last_rule.antecedents) == 1:
-            cols, _ = VizRank(input_data=CN2.current_data.drop(["weight_times", "weights"], axis=1),
+            cols, _ = VizRank(input_data=CN2.current_data.drop(["weight_times", "weights", "subgroups"], axis=1),
                               col_output=CN2.col_output,
                               fixed_col=last_rule.antecedents[0].variable
                               )
     else:
-        cols, _ = VizRank(input_data=CN2.current_data.drop(["weight_times", "weights"], axis=1),
+        cols, _ = VizRank(input_data=CN2.current_data.drop(["weight_times", "weights", "subgroups"], axis=1),
                           col_output=CN2.col_output
                           )
     data = CN2.current_data
-    cols_data = cols + ["weights"] + [CN2.col_output]
+    cols_data = cols + ["weights", CN2.col_output]
+    if end_cn2:
+        cols_data += ["subgroups"]
     data = data[cols_data]
     # Prepare data por d3
     chart_data = data.to_dict(orient='records')
@@ -229,22 +232,27 @@ def prim():
     return render_template('prim_main.html', form=form)
 
 
-def prepare_data_PRIM(PRIM):
+def prepare_data_PRIM(PRIM, end_prim):
     """
     Prepares data to be sent to template. First, it selects
     the columns that will be in the graph via VizRank of checking
     boundaries in current box. Then, it also adds the output column
     and the bitmap column for box data. Finally, it transforms the data
     in those columns to JSON format.
+    :param end_prim:
     :param PRIM: an object of PRIM's algorithm
     :return: formatted data, ready to be send to template and columns selected
     """
     # Choose cols
     cols = []
+    if end_prim:
+        input_data = PRIM.input_data.drop(["subgroup"], axis=1)
+    else:
+        input_data = PRIM.current_data
     if len(PRIM.current_box.boundary_list) > 0:
         if len(PRIM.current_box.boundary_list) > 1:
-            var1 = PRIM.current_box.boundary_list[-2].variable_name
-            var2 = PRIM.current_box.boundary_list[-1].variable_name
+            var1 = PRIM.current_box.boundary_list[-1].variable_name
+            var2 = PRIM.current_box.boundary_list[-2].variable_name
             if var1 != var2:
                 cols = [var1, var2]
             else:
@@ -252,27 +260,31 @@ def prepare_data_PRIM(PRIM):
                 end = False
                 while not end and actual_len < len(PRIM.current_box.boundary_list):
                     actual_len += 1
-                    var1 = PRIM.current_box.boundary_list[-actual_len].variable_name
+                    var2 = PRIM.current_box.boundary_list[-actual_len].variable_name
                     if var1 != var2:
                         cols = [var1, var2]
                         end = True
                 if not end:
-                    cols, _ = VizRank(input_data=PRIM.current_data,
+                    cols, _ = VizRank(input_data=input_data,
                                       col_output=PRIM.col_output,
                                       fixed_col=var1
                                       )
         elif len(PRIM.current_box.boundary_list) == 1:
-            cols, _ = VizRank(input_data=PRIM.current_data,
+            cols, _ = VizRank(input_data=input_data,
                               col_output=PRIM.col_output,
                               fixed_col=PRIM.current_box.boundary_list[0].variable_name
                               )
     else:
-        cols, _ = VizRank(input_data=PRIM.current_data,
+        cols, _ = VizRank(input_data=input_data,
                           col_output=PRIM.col_output
                           )
-    cols_data = cols + [PRIM.col_output]
-    data = PRIM.current_data[cols_data]
-    data["In_current_box"] = PRIM.get_current_box_bitmap(PRIM.box_data)["In_current_box"]
+    if end_prim:
+        cols_data = cols + [PRIM.col_output] + ["subgroup"]
+        data = PRIM.input_data[cols_data]
+    else:
+        cols_data = cols + [PRIM.col_output]
+        data = input_data[cols_data]
+        data["In_current_box"] = PRIM.get_current_box_bitmap(PRIM.box_data)["In_current_box"]
     # Prepare data por d3
     chart_data = data.to_dict(orient='records')
     chart_data = json.dumps(chart_data, indent=2)
@@ -293,7 +305,7 @@ def prim_exec():
             flash("Box is finished. Click the button to execute the pasting.", "info")
     else:
         end_prim = session['end_PRIM']
-    data, cols = prepare_data_PRIM(PRIM)
+    data, cols = prepare_data_PRIM(PRIM, end_prim)
     return render_template('prim_exec.html', box_list=PRIM.boxes, current_box=PRIM.current_box, end_box=end_box,
                            data=data, cols=cols, col_output=PRIM.col_output, pasting=pasting, redundant=redundant,
                            end_prim=end_prim)
@@ -310,7 +322,7 @@ def prim_pasting():
         flash("No variables were modified!  Click the button to execute the elimination of redundant input variables.",
               "info")
     session['PRIM'] = PRIM
-    data, cols = prepare_data_PRIM(PRIM)
+    data, cols = prepare_data_PRIM(PRIM, False)
     return render_template('prim_exec.html', box_list=PRIM.boxes, current_box=PRIM.current_box, end_box=True, data=data,
                            cols=cols, col_output=PRIM.col_output, pasting=False, redundant=True)
 
@@ -339,22 +351,28 @@ titles_descriptions = {
                                  "characterise the diamonds with a value of the variable \"cut\" such as \"Ideal\". "
                                  "There are categorical, numeric and ordinal variables in this dataset. "
                                  "The ordinal one is \"color\" whose order is defined as "
-                                 "J < I < H < G < F < E < D."),
+                                 "J < I < H < G < F < E < D. It was obtained from this URL: "
+                                 "https://www.kaggle.com/shivam2503/diamonds"),
     "iris.csv": ("Iris", "Iris dataset, perhaps the best known database to be found in the pattern recognition "
                          "literature. Predicted attribute: class of iris plant. All the other attributes "
                          "are numeric and describe physical characteristics of each plant. It is not suitable "
-                         "for CN2-SD, as this implementation does not take numeric attributes into account."),
+                         "for CN2-SD, as this implementation does not take numeric attributes into account. "
+                         "This dataset belongs to the UCI Machine Learning repository and can be found here: "
+                         "https://www.kaggle.com/uciml/iris"),
     "mushrooms.csv": ("Mushrooms", "A dataset with information about mushrooms with a target class (\"class\") that "
                                    "determines if the mushroom is edible (\"e\") or poisonous (\"p\"). The rest "
-                                   "of attributes are categorical and describe their characteristics. Information "
+                                   "of attributes are categorical and describe their characteristics. "
+                                   "This dataset belongs to the UCI Machine Learning repository and information "
                                    "about the attributes (and also the file) can be found in this URL: "
-                                   "https://www.kaggle.com/uciml/mushroom-classification "),
+                                   "https://www.kaggle.com/uciml/mushroom-classification"),
     "titanic.csv": ("Titanic", "This dataset contains information about the passengers aboard the Titanic, including "
                                "a target class (\"Survived\") that determines if the person survived the tragic "
-                               "accident. It contains both numeric and categorical attributes."),
+                               "accident. It contains both numeric and categorical attributes. It can be found here: "
+                               "https://www.kaggle.com/c/titanic/data?select=train.csv"),
     "Pokemon.csv": ("Pokemon", "This dataset contains all the pokemons ever created, with characteristics regarding "
                                "each pokemon's classes or attributes (like HP, attack...). With this dataset we can "
-                               "try to characterise the legendary ones, marked in the target variable \"Legendary\". ")
+                               "try to characterise the legendary ones, marked in the target variable \"Legendary\". "
+                               "Obtained from: https://gist.github.com/armgilles/194bcff35001e7eb53a2a8b441e8b2c6")
 }
 
 
