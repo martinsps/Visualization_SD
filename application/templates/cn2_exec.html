@@ -9,7 +9,19 @@ CN2-SD
         <div class="col">
             <h2>Executing CN2-SD </h2>
             {% if end %}
-                <h3> It is finished! </h3>
+                <h3> It is finished! </h3> <br>
+                <p>The colors now represent the subgroups and the shapes represent the class. If an element belong to multiple groups, a mixed color is shown. The subgroup colors are:</p>
+                <div id="legend_subgroups">
+                    <svg></svg>
+                </div>
+            {% else %}
+                 <div class="content-section">
+                     <form method="POST" action="" enctype="multipart/form-data">
+                        <div class="form-group">
+                            <input class="btn btn-outline-info" id="submit" name="submit" type="submit" value="Do step!">
+                        </div>
+                    </form>
+                </div>
             {% endif %}
         </div>
     </div>
@@ -43,24 +55,23 @@ CN2-SD
                     {% endfor %}
                 </tbody>
             </table>
-
-            {% if not end %}
-                 <div class="content-section">
-                     <form method="POST" action="" enctype="multipart/form-data">
-                        <div class="form-group">
-                            <input class="btn btn-outline-info" id="submit" name="submit" type="submit" value="Do step!">
-                        </div>
-                    </form>
-                </div>
-            {% endif %}
         </div>
     </div>
     <script src="{{ url_for('static', filename='js/graphics.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/color_mixer.js') }}"></script>
     <script>
         const graphData = {{ data.chart_data | safe }};
         const cols = {{ cols | safe }};
         const col_output = '{{ col_output | safe }}';
-        const resize = () => redraw(graphData,cols,col_output, "CN2");
+        const end = ('{{ end }}' == 'True');
+        const rule_list = [];
+        {% for rule in rule_list %}
+        rule_list.push(`{{ rule | safe }}`);
+        {% endfor %}
+        var algorithm = {
+            "name": "CN2"
+        }
+        const resize = () => redraw(graphData,cols,col_output,algorithm,end,rule_list);
         resize();
         window.onresize = resize;
     </script>

@@ -9,13 +9,46 @@ PRIM
         <div class="col">
             <h2>Executing PRIM </h2>
             {% if end_prim %}
-                <h3> It is finished! </h3>
+                <h3> It is finished! </h3> <br>
+                <p>The colors now represent the subgroups and the shapes represent the class. The subgroup colors are:</p>
+                <div id="legend_subgroups">
+                    <svg></svg>
+                </div>
+            {% else %}
+                {% if not end_box %}
+                     <div class="content-section">
+                         <form method="POST" action="" enctype="multipart/form-data">
+                            <div class="form-group">
+                                <input class="btn btn-outline-info" id="submit" name="submit" type="submit" value="Do step!">
+                            </div>
+                        </form>
+                    </div>
+                <!-- Case of end of algorithm, pasting or redundant -->
+                {% else %}
+                    {% if pasting %}
+                        <div class="content-section">
+                             <form method="POST" action="{{ url_for('main_bp.prim_pasting') }}" enctype="multipart/form-data">
+                                <div class="form-group">
+                                    <input class="btn btn-outline-info" id="submit" name="submit" type="submit" value="Do pasting!">
+                                </div>
+                            </form>
+                        </div>
+                    {% elif redundant %}
+                        <div class="content-section">
+                             <form method="POST" action="{{ url_for('main_bp.prim_redundant') }}" enctype="multipart/form-data">
+                                <div class="form-group">
+                                    <input class="btn btn-outline-info" id="submit" name="submit" type="submit" value="Eliminate redundant input variables!">
+                                </div>
+                            </form>
+                        </div>
+                    {% endif %}
+                {% endif %}
             {% endif %}
         </div>
     </div>
     <div class="row">
         <div class="col-12" id="chartArea">
-            <svg ></svg>
+            <svg></svg>
         </div>
         {% if not end_prim %}
             {% if current_box.boundary_list|length > 0 %}
@@ -50,36 +83,7 @@ PRIM
                     {% endfor %}
                 </tbody>
             </table>
-            {% if not end_prim %}
-                {% if not end_box %}
-                     <div class="content-section">
-                         <form method="POST" action="" enctype="multipart/form-data">
-                            <div class="form-group">
-                                <input class="btn btn-outline-info" id="submit" name="submit" type="submit" value="Do step!">
-                            </div>
-                        </form>
-                    </div>
-                <!-- Case of end of algorithm, pasting or redundant -->
-                {% else %}
-                    {% if pasting %}
-                        <div class="content-section">
-                             <form method="POST" action="{{ url_for('main_bp.prim_pasting') }}" enctype="multipart/form-data">
-                                <div class="form-group">
-                                    <input class="btn btn-outline-info" id="submit" name="submit" type="submit" value="Do pasting!">
-                                </div>
-                            </form>
-                        </div>
-                    {% elif redundant %}
-                        <div class="content-section">
-                             <form method="POST" action="{{ url_for('main_bp.prim_redundant') }}" enctype="multipart/form-data">
-                                <div class="form-group">
-                                    <input class="btn btn-outline-info" id="submit" name="submit" type="submit" value="Eliminate redundant input variables!">
-                                </div>
-                            </form>
-                        </div>
-                    {% endif %}
-                {% endif %}
-            {% endif %}
+
         </div>
     </div>
     <script src="{{ url_for('static', filename='js/graphics.js') }}"></script>
@@ -87,7 +91,26 @@ PRIM
         const graphData = {{ data.chart_data | safe }};
         const cols = {{ cols | safe }};
         const col_output = '{{ col_output | safe }}';
-        const resize = () => redraw(graphData,cols,col_output,"PRIM");
+        var type = '';
+        var value = '';
+        {% if current_box.boundary_list|length > 0 %}
+            type = '{{ current_box.boundary_list[-1].operator }}';
+            value = '{{ current_box.boundary_list[-1].value }}';
+        {% endif %}
+        const end_prim = ('{{ end_prim }}' == 'True');
+        const redundant = ('{{ redundant }}' == 'True');
+        const draw = type != '' && value != '' && !redundant && !end_prim;
+        const box_list = [];
+        {% for box in box_list %}
+        box_list.push(`{{ box | safe }}`);
+        {% endfor %}
+        var algorithm = {
+            "name": "PRIM",
+            "typeBoundary": type,
+            "valueBoundary": value,
+            "drawBoundary": draw
+        }
+        const resize = () => redraw(graphData,cols,col_output,algorithm,end_prim,box_list);
         resize();
         window.onresize = resize;
     </script>
