@@ -1,7 +1,12 @@
 body { padding-top: 70px; }
 
 .title {
-    font-size: 1.8rem;
+    font-size: 1.7rem;
+}
+
+#chartArea{
+    margin-top:20px;
+    overflow: visible;
 }
 
 .axis-label{
