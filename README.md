@@ -3,13 +3,13 @@ Server for interactive visualization of subgroup discovery algorithms: PRIM and 
 
 There is a docker image with the server ready for use to make it simple and to avoid problems with python version or dependencies. The instructions for its download and use are the following:
 
-1. To pull the image, use the following command in docker (latest version is v2):
+1. To pull the image, use the following command in docker (latest version is v3):
 
-<pre><code>sudo docker pull martinsps/flask_server:v2</code></pre>
+<pre><code>sudo docker pull martinsps/flask_server:v3</code></pre>
 
 2. Once pulled, run the image with a name (flask_server for example) in terminal mode indicating a port to communicate with it (in the example, 5000):
 
-<pre><code>sudo docker run --name flask_server -ti -p 5000:5000 martinsps/flask_server:v2</code></pre>
+<pre><code>sudo docker run --name flask_server -ti -p 5000:5000 martinsps/flask_server:v3</code></pre>
 
 3. Inside the docker running, move to the app directory:
 
