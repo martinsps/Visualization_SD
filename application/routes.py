@@ -6,7 +6,7 @@ from flask import current_app
 
 from .forms import CN2SDForm, PRIMForm
 from .algorithms.CN2_SD import initialize_CN2_SD
-from .algorithms.PRIM import initialize_PRIM, Box
+from .algorithms.PRIM import initialize_PRIM
 import pandas as pd
 from .algorithms.errors import UserInputError
 import json

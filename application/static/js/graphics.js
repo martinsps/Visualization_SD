@@ -17,7 +17,7 @@ const redraw = (graphData, cols, col_output, algorithm, end, subgroups) => {
 
     // Used for proportions
     const maxWidth = 760;
-    const prop = width / maxWidth > 1 ? 1 : width / maxWidth;
+    const prop = width > maxWidth ? 1 : width / maxWidth;
 
     // The newest found is the X (from PRIM)
     const colX = cols[0];
