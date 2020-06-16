@@ -117,6 +117,11 @@ const redraw = (graphData, cols, col_output, algorithm, end, subgroups) => {
         .range(d3.schemeCategory10);
       const colorValue = d => d[col_output];
 
+      // Define the div for the tooltip (https://bl.ocks.org/d3noob/a22c42db65eb00d4e369)
+      var div = d3.select("body").append("div")
+        .attr("class", "tooltip")
+        .style("opacity", 0);
+
       // Functions for mouse over and mouseout events for showing
       // information about the points in the graph
       const funMouseover = d => {
@@ -132,10 +137,7 @@ const redraw = (graphData, cols, col_output, algorithm, end, subgroups) => {
             .duration(500)
             .style("opacity", 0);
       }
-      // Define the div for the tooltip (https://bl.ocks.org/d3noob/a22c42db65eb00d4e369)
-      var div = d3.select("body").append("div")
-        .attr("class", "tooltip")
-        .style("opacity", 0);
+
 
       // Normal graphs (color for class)
       if(!end){
